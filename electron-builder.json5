@@ -11,6 +11,7 @@
     "dist",
     "dist-electron"
   ],
+  "icon": "build/icon",
   "mac": {
     "target": [
       "dmg"
@@ -26,6 +27,7 @@
         ]
       }
     ],
+    "icon": "build/icon.ico",
     "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
   },
   "nsis": {

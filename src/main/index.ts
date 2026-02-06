@@ -100,7 +100,7 @@ async function createWindow() {
   const isWindows = process.platform === 'win32'
 
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.APP_ROOT, 'build', 'icon.ico'),
     width: 1400,
     height: 900,
     minWidth: 900,
