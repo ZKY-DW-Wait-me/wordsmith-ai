@@ -8,15 +8,15 @@ export function VbaGuide() {
         <CardTitle>Word VBA 宏安装指南</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+        <div className="mb-4 rounded-xl bg-zinc-100 p-3 text-sm text-zinc-700">
           VBA 宏是连接 WordSmith AI 与 Microsoft Word 的桥梁，用于将生成的 LaTeX 公式转换为原生 Word 公式对象。
         </div>
 
         <HelpSection title="安装步骤">
           <HelpStep index={1} title="打开开发工具">
             打开 Word，点击顶部菜单栏的【开发工具】选项卡。
-            <div className="mt-1 text-xs text-slate-500">
-              如果没看到该选项卡：文件 &gt; 选项 &gt; 自定义功能区 &gt; 勾选右侧的“开发工具”。
+            <div className="mt-1 text-xs text-zinc-500">
+              如果没看到该选项卡：文件 &gt; 选项 &gt; 自定义功能区 &gt; 勾选右侧的"开发工具"。
             </div>
           </HelpStep>
           <HelpStep index={2} title="进入 Visual Basic 编辑器">
@@ -31,7 +31,7 @@ export function VbaGuide() {
           </HelpStep>
         </HelpSection>
 
-        <div className="my-6 border-t border-slate-200" />
+        <div className="my-6 border-t border-zinc-200" />
 
         <HelpSection title="如何使用">
           <HelpStep index={1} title="复制内容">

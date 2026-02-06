@@ -17,7 +17,7 @@ export function PreviewFrame({ html }: PreviewFrameProps) {
       <div className="min-h-0 flex-1">
         <iframe
           title="preview"
-          className="h-full w-full rounded-lg border border-slate-200 bg-white"
+          className="h-full w-full rounded-xl border border-zinc-200 bg-white"
           sandbox="allow-same-origin"
           srcDoc={html}
         />

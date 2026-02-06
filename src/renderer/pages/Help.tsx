@@ -31,10 +31,10 @@ export default function HelpPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
                   activeTab === tab.id
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-slate-600 hover:bg-slate-100',
+                    ? 'bg-zinc-200 text-zinc-900'
+                    : 'text-zinc-600 hover:bg-zinc-100',
                 )}
               >
                 <Icon size={18} />

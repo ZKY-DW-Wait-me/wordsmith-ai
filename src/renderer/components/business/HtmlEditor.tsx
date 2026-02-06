@@ -16,7 +16,7 @@ export function HtmlEditor({ value, onChange }: HtmlEditorProps) {
           <CardTitle>{t.editor.title}</CardTitle>
         </CardHeader>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200">
+      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-zinc-200">
         <Editor
           height="100%"
           defaultLanguage="html"

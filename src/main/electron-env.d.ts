@@ -27,5 +27,12 @@ interface Window {
     clipboard: {
       write: (payload: { html: string; text: string }) => Promise<void>
     }
+    window: {
+      minimize: () => void
+      maximize: () => void
+      close: () => void
+      isMaximized: () => Promise<boolean>
+      onMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void
+    }
   }
 }

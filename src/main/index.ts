@@ -63,11 +63,33 @@ async function loadUrlWithRetry(win: BrowserWindow, url: string, retries = 20, d
   }
 }
 
+// Clipboard IPC
 ipcMain.handle('clipboard:write', async (_event, payload: { html: string; text: string }) => {
   clipboard.write({
     html: payload.html,
     text: payload.text,
   })
+})
+
+// Window control IPC handlers
+ipcMain.on('window:minimize', () => {
+  win?.minimize()
+})
+
+ipcMain.on('window:maximize', () => {
+  if (win?.isMaximized()) {
+    win.unmaximize()
+  } else {
+    win?.maximize()
+  }
+})
+
+ipcMain.on('window:close', () => {
+  win?.close()
+})
+
+ipcMain.handle('window:isMaximized', () => {
+  return win?.isMaximized() ?? false
 })
 
 async function createWindow() {
@@ -80,12 +102,23 @@ async function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
+    frame: false, // Frameless window
+    backgroundColor: '#fafafa', // zinc-50 to prevent white flash
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
     },
+  })
+
+  // Send maximize state changes to renderer
+  win.on('maximize', () => {
+    win?.webContents.send('window:maximized', true)
+  })
+
+  win.on('unmaximize', () => {
+    win?.webContents.send('window:maximized', false)
   })
 
   // Test active push message to Renderer-process.
