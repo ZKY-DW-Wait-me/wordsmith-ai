@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bean-green: #C7EDCC;
+  --color-bean-text: #5F6C64;
+}
+
+html,
+body,
+#root {
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* 防止最外层出现滚动条 */
+}
+
+body {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+}
+
+/* Eye Care Mode Overrides */
+html.eye-care body {
+  background-color: #C7EDCC !important;
+  color: #5F6C64 !important;
+}
+
+html.eye-care .bg-white {
+  background-color: #F0F9F1 !important;
+}
+
+html.eye-care .bg-slate-50 {
+  background-color: #C7EDCC !important;
+}
+
+html.eye-care .border-slate-200 {
+  border-color: #A8D8B9 !important;
+}
+
+html.eye-care input, 
+html.eye-care textarea, 
+html.eye-care select {
+  background-color: #F0F9F1 !important;
+  border-color: #A8D8B9 !important;
+  color: #2C3E34 !important;
+}
+
+html.eye-care .text-slate-900 {
+  color: #2C3E34 !important;
+}
+
+html.eye-care .text-slate-500,
+html.eye-care .text-slate-600 {
+  color: #5F6C64 !important;
+}
