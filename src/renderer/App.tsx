@@ -8,7 +8,6 @@ import HelpPage from './pages/Help'
 import { OnboardingModal } from './components/business/OnboardingModal'
 import { Toaster } from './components/ui/Toaster'
 import { GlobalSidebar } from './components/business/GlobalSidebar'
-import { TitleBar } from './components/business/TitleBar'
 import { PageLayout } from './layouts/PageLayout'
 
 function App() {
@@ -23,27 +22,21 @@ function App() {
   }, [eyeCareMode])
 
   return (
-    <div className="flex h-full w-full flex-col bg-zinc-50">
-      {/* Custom Title Bar */}
-      <TitleBar />
+    <div className="flex h-full w-full bg-zinc-50">
+      <OnboardingModal />
+      <Toaster />
 
-      {/* Main App Content */}
-      <div className="flex min-h-0 flex-1">
-        <OnboardingModal />
-        <Toaster />
+      {/* Global Navigation Sidebar - extends to top */}
+      <GlobalSidebar />
 
-        {/* Global Navigation Sidebar */}
-        <GlobalSidebar />
-
-        {/* Main Content Area */}
-        <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-          <Routes>
-            <Route path="/" element={<NewPage />} />
-            <Route path="/history" element={<PageLayout><HistoryPage /></PageLayout>} />
-            <Route path="/settings" element={<PageLayout><SettingsPage /></PageLayout>} />
-            <Route path="/help" element={<PageLayout><HelpPage /></PageLayout>} />
-          </Routes>
-        </div>
+      {/* Main Content Area */}
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        <Routes>
+          <Route path="/" element={<NewPage />} />
+          <Route path="/history" element={<PageLayout><HistoryPage /></PageLayout>} />
+          <Route path="/settings" element={<PageLayout><SettingsPage /></PageLayout>} />
+          <Route path="/help" element={<PageLayout><HelpPage /></PageLayout>} />
+        </Routes>
       </div>
     </div>
   )

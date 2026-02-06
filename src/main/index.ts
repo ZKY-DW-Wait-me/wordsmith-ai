@@ -96,13 +96,21 @@ async function createWindow() {
   // Remove the application menu completely
   Menu.setApplicationMenu(null)
 
+  // Platform-specific window configuration
+  const isWindows = process.platform === 'win32'
+
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     width: 1400,
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    frame: false, // Frameless window
+    titleBarStyle: 'hidden', // Hide title bar but keep window controls
+    titleBarOverlay: isWindows ? {
+      color: '#f4f4f5', // zinc-100
+      symbolColor: '#71717a', // zinc-500
+      height: 36,
+    } : undefined,
     backgroundColor: '#fafafa', // zinc-50 to prevent white flash
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import {
-  Globe, Palette, Bot, Wrench, Check, Loader2, X, ChevronDown
+  Globe, Palette, Bot, Wrench, Check, Loader2, X, ChevronDown, AlertTriangle
 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { useI18n, useLocale, useSetLocale } from '../store/useI18nStore'
 import { settingsService } from '../services/SettingsService'
 import { toast } from '../store/useToastStore'
 import { Button } from '../components/ui/button'
+import { ConfirmDialog } from '../components/ui/Dialog'
 import { cn } from '../lib/cn'
 
 const TABS = [
@@ -40,6 +41,7 @@ export default function SettingsPage() {
   const [showProviderDropdown, setShowProviderDropdown] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [resetConfirm, setResetConfirm] = useState(false)
 
   const currentProvider = AI_PROVIDERS.find(p => p.url === settings.ai.baseUrl)
 
@@ -74,10 +76,8 @@ export default function SettingsPage() {
   }
 
   const handleReset = () => {
-    if (confirm('确定要恢复出厂设置吗？这将丢失所有自定义配置。')) {
-      settingsService.resetToDefaults()
-      toast({ title: '已恢复出厂设置', variant: 'success' })
-    }
+    settingsService.resetToDefaults()
+    toast({ title: '已恢复出厂设置', variant: 'success' })
   }
 
   const handleExport = () => {
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                 <Button variant="outline" onClick={handleExport} className="flex-1">
                   导出配置
                 </Button>
-                <Button variant="destructive" onClick={handleReset} className="flex-1">
+                <Button variant="destructive" onClick={() => setResetConfirm(true)} className="flex-1">
                   恢复出厂设置
                 </Button>
               </div>
@@ -393,6 +393,19 @@ export default function SettingsPage() {
           </>
         )}
       </div>
+
+      {/* Reset Confirm Dialog */}
+      <ConfirmDialog
+        open={resetConfirm}
+        onClose={() => setResetConfirm(false)}
+        onConfirm={handleReset}
+        title="恢复出厂设置"
+        description="此操作将清除所有自定义配置，包括 API 密钥、排版设置等。此操作无法撤销，确定要继续吗？"
+        confirmText="确认恢复"
+        cancelText="取消"
+        variant="destructive"
+        icon={<AlertTriangle size={20} />}
+      />
     </div>
   )
 }

@@ -22,10 +22,26 @@ export function GlobalSidebar() {
   }
 
   return (
-    <aside className="relative z-50 flex h-full w-16 shrink-0 flex-col items-center border-r border-zinc-200/50 bg-zinc-100/50 py-4">
-      {/* Logo */}
-      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900">
-        <Sparkles size={18} className="text-white" />
+    <aside className="relative z-50 flex h-full w-16 shrink-0 flex-col items-center border-r border-zinc-200/50 bg-zinc-100/50">
+      {/* Drag Region - Top area for window dragging */}
+      <div
+        className="flex w-full shrink-0 flex-col items-center pb-2 pt-3"
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      >
+        {/* Brand Logo */}
+        <div
+          className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          <Sparkles size={18} className="text-white" />
+        </div>
+
+        {/* Brand Text - Vertical */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="font-serif text-[10px] font-light tracking-widest text-zinc-500" style={{ writingMode: 'vertical-rl' }}>
+            WordSmith
+          </span>
+        </div>
       </div>
 
       {/* New Chat Button */}
@@ -40,7 +56,7 @@ export function GlobalSidebar() {
         )}
       >
         <Plus size={20} strokeWidth={2} />
-        <span className="pointer-events-none absolute left-full top-1/2 z-[100] ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+        <span className="pointer-events-none absolute left-full top-1/2 z-[100] ml-3 -translate-y-1/2 whitespace-nowrap rounded-xl bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
           新建对话
         </span>
       </button>
@@ -64,7 +80,7 @@ export function GlobalSidebar() {
             >
               <Icon size={20} strokeWidth={active ? 2 : 1.5} />
               {/* Tooltip - positioned to the right, outside the sidebar */}
-              <span className="pointer-events-none absolute left-full top-1/2 z-[100] ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+              <span className="pointer-events-none absolute left-full top-1/2 z-[100] ml-3 -translate-y-1/2 whitespace-nowrap rounded-xl bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                 {item.label}
               </span>
             </Link>
