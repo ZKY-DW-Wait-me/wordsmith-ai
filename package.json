@@ -1,7 +1,7 @@
 {
   "name": "wordsmith-ai",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "WordSmith AI（智排精灵）- AI 驱动的 Word 高保真排版桌面应用",
   "author": "WordSmith AI",
   "type": "module",

@@ -32,7 +32,8 @@
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    "shortcutName": "WordSmith AI"
   },
   "linux": {
     "target": [
