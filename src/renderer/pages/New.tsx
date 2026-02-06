@@ -1,135 +1,400 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { GuardReport } from '../types/guard'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  FileText, Upload, X, Copy, Code, RefreshCw,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
+  Sparkles, ArrowRight, Maximize2, ExternalLink, AlertCircle
+} from 'lucide-react'
 import { guardHtml } from '../lib/protocol-guard'
 import { getTemplateById } from '../lib/templates'
 import { ChatPanel } from '../components/business/ChatPanel'
-import { CopyToWordButton } from '../components/business/CopyToWordButton'
-import { HtmlEditor } from '../components/business/HtmlEditor'
-import { MacroGenerator } from '../components/business/MacroGenerator'
-import { PreviewFrame } from '../components/business/PreviewFrame'
-import { Sidebar } from '../components/business/Sidebar'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
-import { Input } from '../components/ui/input'
 import { useAppStore } from '../store/useAppStore'
-import { useI18n } from '../store/useI18nStore'
-
-const DEFAULT_HTML = `<body style="margin:0; padding:0; font-family:'SimSun'; font-size:12pt;">
-  <p style="margin:0 0 12pt 0;">将 AI 生成的内容粘贴到这里，右侧预览与复制会自动使用排版协议守卫。</p>
-  <table style="width:600px; border:1px solid #333;">
-    <tr>
-      <td style="padding:8px;">示例</td>
-      <td style="padding:8px;">$E=mc^2$</td>
-    </tr>
-  </table>
-</body>`
+import { Button } from '../components/ui/button'
+import { toast } from '../store/useToastStore'
 
 export default function NewPage() {
-  const t = useI18n()
   const settings = useAppStore((s) => s.settings)
-  const updateTypography = useAppStore((s) => s.updateTypography)
-  const presets = useAppStore((s) => s.presets)
   const addHistoryItem = useAppStore((s) => s.addHistoryItem)
-  const selectedPreset = presets[0]
+  const customInstruction = useAppStore((s) => s.customInstruction)
+  const setCustomInstruction = useAppStore((s) => s.setCustomInstruction)
+  const referenceFiles = useAppStore((s) => s.referenceFiles)
+  const addReferenceFile = useAppStore((s) => s.addReferenceFile)
+  const removeReferenceFile = useAppStore((s) => s.removeReferenceFile)
+
+  // 使用全局工作区状态
+  const workspace = useAppStore((s) => s.workspace)
+  const updateWorkspace = useAppStore((s) => s.updateWorkspace)
+
+  const { htmlDraft, finalHtml, guardReport } = workspace
 
   const template = useMemo(() => getTemplateById(settings.templateId), [settings.templateId])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [htmlDraft, setHtmlDraft] = useState(DEFAULT_HTML)
-  const [finalHtml, setFinalHtml] = useState(DEFAULT_HTML)
-  const [guardReport, setGuardReport] = useState<GuardReport | null>(null)
+  const [showSource, setShowSource] = useState(false)
+  const [showFullscreen, setShowFullscreen] = useState(false)
 
-  // Merge template styles with settings (Settings take priority if modified, or just use template as base)
-  // Here we use settings.typography as the source of truth for the ChatPanel generation parameters,
-  // but for the visual guard/preview, we might want to ensure the template CSS is respected.
-  // Actually, guardHtml uses `defaults` to inject styles if missing.
-  
-  const activeTypography = useMemo(() => ({
-    fontFamily: settings.typography.fontFamily || template.style.fontFamily,
-    fontSizePt: settings.typography.fontSizePt || template.style.fontSizePt,
-  }), [settings.typography, template])
+  // Panel collapse states
+  const [leftCollapsed, setLeftCollapsed] = useState(false)
+  const [rightCollapsed, setRightCollapsed] = useState(false)
 
-  const guarded = useMemo(() => guardHtml(htmlDraft, activeTypography), [htmlDraft, activeTypography])
+  const activeTypography = useMemo(
+    () => ({
+      fontFamily: settings.typography.fontFamily || template.style.fontFamily,
+      fontSizePt: settings.typography.fontSizePt || template.style.fontSizePt,
+    }),
+    [settings.typography, template]
+  )
 
+  // 当 htmlDraft 变化时重新计算 guarded
   useEffect(() => {
-    setFinalHtml(guarded.html)
-    setGuardReport(guarded.report)
-  }, [guarded])
+    const guarded = guardHtml(htmlDraft, activeTypography)
+    updateWorkspace({ finalHtml: guarded.html, guardReport: guarded.report })
+  }, [htmlDraft, activeTypography, updateWorkspace])
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length) return
+    for (const file of Array.from(files)) {
+      if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+        const content = await file.text()
+        addReferenceFile({ name: file.name, content })
+      }
+    }
+    e.target.value = ''
+  }
+
+  const copyToClipboard = async () => {
+    try {
+      const text = finalHtml.replace(/<[^>]+>/g, '')
+      if (window.wordsmith?.clipboard?.write) {
+        await window.wordsmith.clipboard.write({ html: finalHtml, text })
+      } else if (navigator.clipboard?.write) {
+        const item = new ClipboardItem({
+          'text/html': new Blob([finalHtml], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' }),
+        })
+        await navigator.clipboard.write([item])
+      } else {
+        await navigator.clipboard.writeText(text)
+      }
+      toast({
+        title: '已复制到剪贴板',
+        description: '请在 Word 中选择【保留原格式】粘贴',
+        variant: 'success',
+        duration: 5000
+      })
+    } catch {
+      toast({ title: '复制失败', variant: 'destructive' })
+    }
+  }
+
+  const openPreviewWindow = () => {
+    const previewWindow = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no')
+    if (previewWindow) {
+      previewWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>WordSmith 预览</title>
+          <style>
+            body { margin: 0; padding: 24px; background: #fff; }
+          </style>
+        </head>
+        <body>
+          ${finalHtml}
+        </body>
+        </html>
+      `)
+      previewWindow.document.close()
+    }
+  }
+
+  const refreshPreview = () => {
+    const guarded = guardHtml(htmlDraft, activeTypography)
+    updateWorkspace({ finalHtml: guarded.html, guardReport: guarded.report })
+  }
 
   return (
-    <div className="h-full w-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <div className="flex h-full">
-        <Sidebar />
+    <div className="relative flex h-full w-full bg-zinc-50">
+      {/* Left Column: Context Sidebar */}
+      <aside
+        className={`flex h-full shrink-0 flex-col border-r border-zinc-200/50 bg-white/80 backdrop-blur-sm transition-all duration-300 ${
+          leftCollapsed ? 'w-0 overflow-hidden border-r-0' : 'w-64'
+        }`}
+      >
+        <div className="flex h-full flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/50 px-4 py-3">
+            <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">智囊配置</span>
+            <Button variant="ghost" size="icon" onClick={() => setLeftCollapsed(true)} className="h-7 w-7">
+              <PanelLeftClose size={14} />
+            </Button>
+          </div>
 
-        <main className="flex h-full min-w-0 flex-1 gap-3 p-3">
-          {/* 中间主要区域：对话 + 编辑 */}
-          <section className="flex min-w-0 flex-1 flex-col gap-3">
-            <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-              <ChatPanel
-                baseUrl={settings.ai.baseUrl}
-                apiKey={settings.ai.apiKey}
-                model={settings.ai.model}
-                defaults={activeTypography}
-                presetPrompt={template.systemPrompt || selectedPreset?.userPrompt}
-                htmlDraft={htmlDraft}
-                onHtmlFinalized={(html, report, payload) => {
-                  setHtmlDraft(html)
-                  setFinalHtml(html)
-                  setGuardReport(report)
-                  const title = payload.messages.find((m) => m.role === 'user')?.content?.slice(0, 24) || t.history.itemTitle
-                  addHistoryItem({
-                    title,
-                    mode: payload.mode,
-                    messages: payload.messages,
-                    finalHtml: html,
-                  })
-                }}
+          <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4">
+            {/* Custom Instruction */}
+            <div>
+              <label className="mb-2 block text-xs font-medium text-zinc-600">
+                自定义指令
+              </label>
+              <textarea
+                value={customInstruction}
+                onChange={(e) => setCustomInstruction(e.target.value)}
+                placeholder="输入长效指令..."
+                className="min-h-[120px] w-full resize-none rounded-xl border-0 bg-zinc-100/80 px-3 py-2.5 text-sm text-zinc-700 placeholder:text-zinc-400 focus:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-300/50"
               />
             </div>
-            <div className="h-[300px] shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-              <HtmlEditor value={htmlDraft} onChange={setHtmlDraft} />
-            </div>
-          </section>
 
-          {/* 右侧配置与预览 */}
-          <section className="flex w-[400px] shrink-0 flex-col gap-3 overflow-y-auto pb-2">
-            <Card>
-              <CardHeader className="py-3">
-                <CardTitle className="text-sm">排版参数</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2 py-0 pb-3">
-                <Input value={settings.typography.fontFamily} onChange={(e) => updateTypography({ fontFamily: e.target.value })} placeholder={t.settings.fontFamily} />
-                <Input
-                  value={String(settings.typography.fontSizePt)}
-                  onChange={(e) => updateTypography({ fontSizePt: Number(e.target.value) || 12 })}
-                  placeholder={t.settings.fontSize}
-                  inputMode="numeric"
-                />
-              </CardContent>
-            </Card>
+            {/* Reference Files */}
+            <div>
+              <label className="mb-2 block text-xs font-medium text-zinc-600">
+                参考文档
+              </label>
 
-            <div className="flex h-[400px] shrink-0 flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-              <PreviewFrame html={finalHtml} />
-            </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.md"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+              />
 
-            <div className="grid grid-cols-1 gap-2">
-              <CopyToWordButton html={finalHtml} />
-              {guardReport ? (
-                <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>{t.preview.guardReport.units}：{guardReport.convertedUnits}</div>
-                    <div>{t.preview.guardReport.tables}：{guardReport.tablesProcessed}</div>
-                    <div>{t.preview.guardReport.styles}：{guardReport.removedStyleTags}</div>
-                    <div>{t.preview.guardReport.links}：{guardReport.removedStylesheetLinks}</div>
-                    <div>{t.preview.guardReport.mathml}：{guardReport.mathMlNodesRemoved}</div>
-                    <div>{t.preview.guardReport.body}：{guardReport.enforcedBodyStyle ? t.preview.guardReport.yes : t.preview.guardReport.no}</div>
-                  </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50/50 px-3 py-3 text-xs text-zinc-500 transition-all hover:border-zinc-300 hover:bg-zinc-100/50"
+              >
+                <Upload size={14} />
+                上传文档
+              </button>
+
+              {/* PDF/Word 提示 */}
+              <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-2 text-xs text-amber-700">
+                <AlertCircle size={12} className="mt-0.5 shrink-0" />
+                <span>仅支持 .txt/.md 格式。PDF/Word 请先提取文字后上传。</span>
+              </div>
+
+              {referenceFiles.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {referenceFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      className="group flex items-center gap-2 rounded-lg bg-zinc-100/80 px-2.5 py-2"
+                    >
+                      <FileText size={12} className="shrink-0 text-zinc-400" />
+                      <span className="flex-1 truncate text-xs text-zinc-600">
+                        {file.name}
+                      </span>
+                      <button
+                        onClick={() => removeReferenceFile(file.id)}
+                        className="shrink-0 rounded p-0.5 text-zinc-400 opacity-0 transition-all hover:bg-zinc-200 hover:text-zinc-600 group-hover:opacity-100"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : null}
+              )}
             </div>
+          </div>
+        </div>
+      </aside>
 
-            <MacroGenerator />
-          </section>
-        </main>
-      </div>
+      {/* Left Collapse Toggle (when collapsed) */}
+      {leftCollapsed && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLeftCollapsed(false)}
+          className="absolute left-2 top-3 z-10 h-8 w-8 rounded-lg bg-white shadow-md"
+        >
+          <PanelLeftOpen size={14} />
+        </Button>
+      )}
+
+      {/* Middle Column: Chat Workspace */}
+      <main className="flex h-full min-w-0 flex-1 flex-col bg-white">
+        <ChatPanel
+          baseUrl={settings.ai.baseUrl}
+          apiKey={settings.ai.apiKey}
+          model={settings.ai.model}
+          defaults={activeTypography}
+          customInstruction={customInstruction}
+          referenceFiles={referenceFiles}
+          htmlDraft={htmlDraft}
+          onHtmlFinalized={(html, report, payload) => {
+            updateWorkspace({ htmlDraft: html, finalHtml: html, guardReport: report })
+            const title = payload.messages.find((m) => m.role === 'user')?.content?.slice(0, 24) || '新文档'
+            addHistoryItem({
+              title,
+              mode: payload.mode,
+              messages: payload.messages,
+              finalHtml: html,
+            })
+          }}
+          emptyState={
+            <div className="flex h-full flex-col items-center justify-center px-8 text-center">
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-zinc-100 to-zinc-200">
+                <Sparkles className="h-8 w-8 text-zinc-400" />
+              </div>
+              <h2 className="mb-2 text-xl font-semibold text-zinc-800">
+                开始智能排版
+              </h2>
+              <p className="mb-6 max-w-md text-sm leading-relaxed text-zinc-500">
+                输入您的内容需求，AI 将自动生成符合 Word 排版规范的专业文档。
+                支持表格、公式、多级标题等复杂格式。
+              </p>
+              <div className="flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-xs text-zinc-500">
+                <span>在下方输入框开始</span>
+                <ArrowRight size={12} />
+              </div>
+            </div>
+          }
+        />
+      </main>
+
+      {/* Right Collapse Toggle (when collapsed) */}
+      {rightCollapsed && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setRightCollapsed(false)}
+          className="absolute right-3 top-3 z-10 h-8 w-8 rounded-lg bg-white shadow-md"
+        >
+          <PanelRightOpen size={14} />
+        </Button>
+      )}
+
+      {/* Right Column: Word Preview */}
+      <aside
+        className={`flex h-full shrink-0 flex-col bg-zinc-100 transition-all duration-300 ${
+          rightCollapsed ? 'w-0 overflow-hidden' : 'w-80 lg:w-96'
+        }`}
+      >
+        <div className="flex h-full flex-col overflow-hidden">
+          {/* Toolbar */}
+          <div className="flex shrink-0 items-center justify-between px-4 py-3">
+            <span className="text-xs font-medium text-zinc-500">预览</span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant={showSource ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => setShowSource(!showSource)}
+                className="h-7 w-7"
+                title="源码"
+              >
+                <Code size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={refreshPreview}
+                className="h-7 w-7"
+                title="刷新"
+              >
+                <RefreshCw size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowFullscreen(true)}
+                className="h-7 w-7"
+                title="全屏预览"
+              >
+                <Maximize2 size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={openPreviewWindow}
+                className="h-7 w-7"
+                title="新窗口打开"
+              >
+                <ExternalLink size={14} />
+              </Button>
+              <Button
+                variant="default"
+                size="icon"
+                onClick={copyToClipboard}
+                className="h-7 w-7"
+                title="复制"
+              >
+                <Copy size={14} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setRightCollapsed(true)}
+                className="h-7 w-7"
+              >
+                <PanelRightClose size={14} />
+              </Button>
+            </div>
+          </div>
+
+          {/* Preview Area */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto p-4 pt-0">
+            {showSource ? (
+              <div className="min-h-0 flex-1 overflow-auto rounded-xl bg-zinc-900 p-4">
+                <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-zinc-300">
+                  {finalHtml}
+                </pre>
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-auto rounded-xl bg-white p-6 shadow-lg">
+                <iframe
+                  title="word-preview"
+                  className="h-full min-h-[400px] w-full border-0"
+                  sandbox="allow-same-origin"
+                  srcDoc={finalHtml}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Stats */}
+          {guardReport && (
+            <div className="shrink-0 border-t border-zinc-200/50 px-4 py-2">
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+                <span>单位: {guardReport.convertedUnits}</span>
+                <span>表格: {guardReport.tablesProcessed}</span>
+                <span>清理: {guardReport.removedStyleTags}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Fullscreen Preview Modal */}
+      {showFullscreen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-white">
+          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-6 py-4">
+            <h2 className="text-lg font-semibold text-zinc-900">全屏预览</h2>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={openPreviewWindow} className="gap-2">
+                <ExternalLink size={14} />
+                新窗口
+              </Button>
+              <Button variant="default" onClick={copyToClipboard} className="gap-2">
+                <Copy size={14} />
+                复制到剪贴板
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setShowFullscreen(false)}>
+                <X size={18} />
+              </Button>
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto bg-zinc-100 p-8">
+            <div className="mx-auto max-w-4xl rounded-xl bg-white p-8 shadow-xl">
+              <iframe
+                title="fullscreen-preview"
+                className="min-h-[600px] w-full border-0"
+                sandbox="allow-same-origin"
+                srcDoc={finalHtml}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

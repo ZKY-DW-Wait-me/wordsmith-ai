@@ -9,7 +9,12 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({ classN
     <textarea
       ref={ref}
       className={cn(
-        'min-h-[120px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600',
+        'w-full rounded-xl border-0 bg-zinc-100/50 px-4 py-3 text-sm text-zinc-900',
+        'placeholder:text-zinc-400',
+        'transition-all duration-200',
+        'focus:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-300/50',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        'resize-none',
         className,
       )}
       {...props}
@@ -17,4 +22,3 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({ classN
   )
 })
 Textarea.displayName = 'Textarea'
-

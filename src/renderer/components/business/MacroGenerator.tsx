@@ -97,13 +97,13 @@ export function MacroGenerator() {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          <p className="text-xs text-slate-600 dark:text-slate-400">
+          <p className="text-xs text-slate-600">
             {t.macro.desc}
           </p>
           <pre className="max-h-[240px] overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">
             <code dangerouslySetInnerHTML={{ __html: highlighted }} />
           </pre>
-          <ol className="list-decimal space-y-1 pl-4 text-xs text-slate-600 dark:text-slate-400">
+          <ol className="list-decimal space-y-1 pl-4 text-xs text-slate-600">
             <li>{t.macro.step1}</li>
             <li>{t.macro.step2}</li>
             <li>{t.macro.step3}</li>

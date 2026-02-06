@@ -8,7 +8,7 @@ export function VbaGuide() {
         <CardTitle>Word VBA 宏安装指南</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-950 dark:text-blue-200">
+        <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
           VBA 宏是连接 WordSmith AI 与 Microsoft Word 的桥梁，用于将生成的 LaTeX 公式转换为原生 Word 公式对象。
         </div>
 
@@ -31,7 +31,7 @@ export function VbaGuide() {
           </HelpStep>
         </HelpSection>
 
-        <div className="my-6 border-t border-slate-200 dark:border-slate-800" />
+        <div className="my-6 border-t border-slate-200" />
 
         <HelpSection title="如何使用">
           <HelpStep index={1} title="复制内容">

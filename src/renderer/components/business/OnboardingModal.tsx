@@ -30,7 +30,7 @@ export function OnboardingModal() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <Card className="w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-300">
         <CardHeader>
-          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-2 text-blue-600">
             <Rocket className="h-6 w-6" />
             <span className="text-sm font-bold uppercase tracking-wider">欢迎使用 WordSmith AI</span>
           </div>
@@ -46,11 +46,11 @@ export function OnboardingModal() {
           {/* Step 1: Welcome */}
           {step === 1 && (
             <div className="space-y-4">
-              <p className="text-slate-600 dark:text-slate-300">
+              <p className="text-slate-600">
                 WordSmith AI 是一款专为专业文档设计的排版工具。它能将 AI 生成的内容转换为符合 <strong>Word 排版协议</strong> 的格式，完美保留公式、表格和样式。
               </p>
-              <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-900">
-                <ul className="list-disc pl-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+              <div className="rounded-lg bg-slate-50 p-4">
+                <ul className="list-disc pl-4 space-y-2 text-sm text-slate-700">
                   <li>支持所有 OpenAI 兼容接口 (DeepSeek, Kimi, etc.)</li>
                   <li>独家 Inline CSS 守卫技术</li>
                   <li>完美渲染 LaTeX 数学公式</li>
@@ -62,14 +62,14 @@ export function OnboardingModal() {
           {/* Step 2: Configuration */}
           {step === 2 && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-slate-600">
                 请先配置您的 AI 服务商。不用担心，稍后可以在【设置】中随时修改。
               </p>
               <div className="space-y-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium">API 提供商</label>
                   <select
-                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-800 dark:bg-slate-950"
+                    className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     onChange={(e) => updateAi({ baseUrl: e.target.value })}
                     value={settings.ai.baseUrl}
                   >
@@ -95,19 +95,19 @@ export function OnboardingModal() {
           {/* Step 3: Paste Warning */}
           {step === 3 && (
             <div className="space-y-6 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
                 <AlertTriangle size={32} />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-amber-700 dark:text-amber-400">至关重要的一步</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-300">
+                <h3 className="text-lg font-bold text-amber-700">至关重要的一步</h3>
+                <p className="text-sm text-slate-600">
                   为了确保样式不丢失，在 Word 中粘贴内容时，<br />
-                  <span className="font-bold text-slate-900 underline decoration-amber-500 decoration-2 underline-offset-2 dark:text-white">
-                    必须选择“保留原格式 (Keep Source Formatting)”
+                  <span className="font-bold text-slate-900 underline decoration-amber-500 decoration-2 underline-offset-2">
+                    必须选择"保留原格式 (Keep Source Formatting)"
                   </span>
                 </p>
               </div>
-              <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+              <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
                 (通常是粘贴选项中的第一个图标 📋)
               </div>
             </div>
@@ -116,12 +116,12 @@ export function OnboardingModal() {
           {/* Step 4: Ready */}
           {step === 4 && (
             <div className="space-y-6 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
                 <CheckCircle2 size={32} />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">配置完成！</h3>
-                <p className="text-slate-600 dark:text-slate-300">
+                <h3 className="text-lg font-bold text-slate-900">配置完成！</h3>
+                <p className="text-slate-600">
                   您现在可以开始创建第一个排版任务了。<br />
                   记得查看左侧的【帮助中心】获取更多技巧。
                 </p>
@@ -137,7 +137,7 @@ export function OnboardingModal() {
                   key={i}
                   className={cn(
                     'h-2 w-2 rounded-full transition-colors',
-                    step === i ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-200 dark:bg-slate-800'
+                    step === i ? 'bg-blue-600' : 'bg-slate-200'
                   )}
                 />
               ))}
@@ -151,7 +151,7 @@ export function OnboardingModal() {
               {step < 4 ? (
                 <Button onClick={() => setStep(step + 1)}>下一步</Button>
               ) : (
-                <Button onClick={handleComplete} className="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white">
+                <Button onClick={handleComplete} className="bg-green-600 hover:bg-green-700 text-white">
                   开始使用
                 </Button>
               )}

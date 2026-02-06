@@ -8,7 +8,7 @@ export function TheoryGuide() {
         <CardTitle>排版协议原理</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="prose prose-sm dark:prose-invert">
+        <div className="prose prose-sm">
           <p>
             WordSmith AI 的核心思想是：<strong>将 Word 的排版规则映射为标准的 HTML/CSS 协议。</strong>
           </p>
@@ -16,16 +16,16 @@ export function TheoryGuide() {
 
         <HelpSection title="核心机制">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-              <div className="font-semibold text-blue-600 dark:text-blue-400">1. Inline CSS 守卫</div>
-              <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <div className="rounded-lg border border-slate-200 p-4">
+              <div className="font-semibold text-blue-600">1. Inline CSS 守卫</div>
+              <div className="mt-2 text-sm text-slate-600">
                 Word 剪贴板只接受内联样式 (Inline Styles)。WordSmith 会自动将 AI 生成的 class 样式
                 转换为 <code>style="..."</code> 属性，确保粘贴时不丢失格式。
               </div>
             </div>
-            <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-              <div className="font-semibold text-purple-600 dark:text-purple-400">2. 单位自动换算</div>
-              <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            <div className="rounded-lg border border-slate-200 p-4">
+              <div className="font-semibold text-purple-600">2. 单位自动换算</div>
+              <div className="mt-2 text-sm text-slate-600">
                 Word 中的 1 磅 (pt) 等于 1.33 像素 (px)。系统会自动将所有尺寸转换为 Word 首选的 pt 单位，
                 保证 <code>font-size: 12pt</code> 在 Word 中也是精准的小四号字。
               </div>
@@ -34,16 +34,16 @@ export function TheoryGuide() {
         </HelpSection>
 
         <HelpSection title="支持的标签与属性">
-          <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="overflow-hidden rounded-lg border border-slate-200">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-900">
+              <thead className="bg-slate-50">
                 <tr>
                   <th className="p-2 text-left">HTML 标签</th>
                   <th className="p-2 text-left">Word 对应元素</th>
                   <th className="p-2 text-left">关键样式</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-200">
                 <tr>
                   <td className="p-2 font-mono">p</td>
                   <td className="p-2">正文段落</td>

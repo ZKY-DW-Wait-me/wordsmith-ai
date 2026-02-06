@@ -4,43 +4,40 @@ import { useEffect } from 'react'
 import NewPage from './pages/New'
 import HistoryPage from './pages/History'
 import SettingsPage from './pages/Settings'
-import TemplatesPage from './pages/Templates'
 import HelpPage from './pages/Help'
 import { OnboardingModal } from './components/business/OnboardingModal'
+import { Toaster } from './components/ui/Toaster'
+import { GlobalSidebar } from './components/business/GlobalSidebar'
+import { PageLayout } from './layouts/PageLayout'
 
 function App() {
-  const theme = useAppStore((s) => s.settings.theme)
   const eyeCareMode = useAppStore((s) => s.settings.eyeCareMode)
 
   useEffect(() => {
     const root = window.document.documentElement
-    root.classList.remove('light', 'dark', 'eye-care')
-
-    // Handle Theme
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-      root.classList.add(systemTheme)
-    } else {
-      root.classList.add(theme)
-    }
-
-    // Handle Eye Care Mode (only effective in light mode ideally, but we apply class anyway)
-    // We check if current resolved theme is light to apply eye-care fully effectively
+    root.classList.remove('eye-care')
     if (eyeCareMode) {
       root.classList.add('eye-care')
     }
-  }, [theme, eyeCareMode])
+  }, [eyeCareMode])
 
   return (
-    <div className="h-full w-full overflow-hidden">
+    <div className="flex h-full w-full bg-zinc-50">
       <OnboardingModal />
-      <Routes>
-        <Route path="/" element={<NewPage />} />
-        <Route path="/history" element={<HistoryPage />} />
-        <Route path="/templates" element={<TemplatesPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/help" element={<HelpPage />} />
-      </Routes>
+      <Toaster />
+
+      {/* Global Navigation Sidebar */}
+      <GlobalSidebar />
+
+      {/* Main Content Area */}
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        <Routes>
+          <Route path="/" element={<NewPage />} />
+          <Route path="/history" element={<PageLayout><HistoryPage /></PageLayout>} />
+          <Route path="/settings" element={<PageLayout><SettingsPage /></PageLayout>} />
+          <Route path="/help" element={<PageLayout><HelpPage /></PageLayout>} />
+        </Routes>
+      </div>
     </div>
   )
 }

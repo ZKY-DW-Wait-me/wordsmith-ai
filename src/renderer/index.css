@@ -12,29 +12,55 @@ body,
   width: 100vw;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* 防止最外层出现滚动条 */
+  overflow: hidden;
 }
 
 body {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #fafafa;
+  color: #18181b;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* Custom scrollbar - thin and elegant */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.5);
+}
+
+/* Smooth animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out forwards;
 }
 
 /* Eye Care Mode Overrides */
@@ -43,31 +69,23 @@ html.eye-care body {
   color: #5F6C64 !important;
 }
 
-html.eye-care .bg-white {
+html.eye-care .bg-white,
+html.eye-care .bg-zinc-50 {
   background-color: #F0F9F1 !important;
 }
 
-html.eye-care .bg-slate-50 {
+html.eye-care .bg-zinc-100 {
   background-color: #C7EDCC !important;
 }
 
-html.eye-care .border-slate-200 {
+html.eye-care .border-zinc-200\/50 {
   border-color: #A8D8B9 !important;
 }
 
-html.eye-care input, 
-html.eye-care textarea, 
+html.eye-care input,
+html.eye-care textarea,
 html.eye-care select {
   background-color: #F0F9F1 !important;
   border-color: #A8D8B9 !important;
   color: #2C3E34 !important;
-}
-
-html.eye-care .text-slate-900 {
-  color: #2C3E34 !important;
-}
-
-html.eye-care .text-slate-500,
-html.eye-care .text-slate-600 {
-  color: #5F6C64 !important;
 }

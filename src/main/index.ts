@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ipcMain } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, Menu } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
@@ -71,8 +71,15 @@ ipcMain.handle('clipboard:write', async (_event, payload: { html: string; text: 
 })
 
 async function createWindow() {
+  // Remove the application menu completely
+  Menu.setApplicationMenu(null)
+
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    width: 1400,
+    height: 900,
+    minWidth: 900,
+    minHeight: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

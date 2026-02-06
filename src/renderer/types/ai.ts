@@ -18,11 +18,11 @@ export interface AIModelConfig {
   model: string
 }
 
-export interface PromptPreset {
+export interface ReferenceFileInput {
   id: string
   name: string
-  mode: PromptMode
-  userPrompt: string
+  content: string
+  uploadedAt: number
 }
 
 export interface StreamChatRequest {
@@ -31,5 +31,6 @@ export interface StreamChatRequest {
   defaults: AIDefaultTypography
   messages: ChatMessage[]
   signal?: AbortSignal
+  customInstruction?: string
+  referenceFiles?: ReferenceFileInput[]
 }
-

@@ -15,13 +15,13 @@ export function ApiGuide() {
           </HelpStep>
           <HelpStep index={2} title="创建 API Key">
             在服务商控制台找到 "API Keys" 菜单，点击创建新密钥。密钥通常以 <code>sk-</code> 开头。
-            <div className="mt-2 rounded bg-slate-100 p-2 text-xs text-slate-500 dark:bg-slate-900">
+            <div className="mt-2 rounded bg-slate-100 p-2 text-xs text-slate-500">
               注意：密钥创建后只会显示一次，请妥善保存。
             </div>
           </HelpStep>
         </HelpSection>
 
-        <div className="my-6 border-t border-slate-200 dark:border-slate-800" />
+        <div className="my-6 border-t border-slate-200" />
 
         <HelpSection title="软件配置">
           <HelpStep index={3} title="填写配置">

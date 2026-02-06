@@ -50,7 +50,7 @@ export function CopyToWordButton({ html }: CopyToWordButtonProps) {
       <Button size="lg" className="w-full" onClick={copy} disabled={busy}>
         {t.preview.copyToWord}
       </Button>
-      <div className="flex items-center justify-center gap-1.5 rounded bg-amber-50 p-2 text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+      <div className="flex items-center justify-center gap-1.5 rounded bg-amber-50 p-2 text-xs font-medium text-amber-700">
         <AlertTriangle size={14} />
         <span>粘贴时务必选择『保留原格式』</span>
       </div>

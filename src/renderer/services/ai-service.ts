@@ -1,5 +1,5 @@
 import type { ChatMessage, StreamChatRequest } from '../types/ai'
-import { buildSystemPrompt } from '../lib/system-prompts'
+import { buildHiddenSystemPrompt, buildReferenceContext, type ReferenceFile } from '../lib/hidden-protocol'
 
 interface ChatCompletionChunk {
   choices?: Array<{
@@ -13,12 +13,45 @@ function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, '')
 }
 
-function buildInjectedMessages(request: StreamChatRequest): ChatMessage[] {
+/**
+ * 构建注入的消息列表
+ * 实现三层提示词架构：
+ * [System] = 隐藏协议 + 用户自定义指令
+ * [Context] = 参考文档内容（如果有）
+ * [User] = 用户当前输入
+ */
+export function buildInjectedMessages(
+  request: StreamChatRequest,
+  customInstruction?: string,
+  referenceFiles?: ReferenceFile[]
+): ChatMessage[] {
+  const referenceContext = referenceFiles?.length ? buildReferenceContext(referenceFiles) : undefined
+
+  const systemPrompt = buildHiddenSystemPrompt(
+    request.mode,
+    request.defaults,
+    customInstruction,
+    referenceContext
+  )
+
   const injected: ChatMessage = {
     role: 'system',
-    content: buildSystemPrompt(request.mode, request.defaults),
+    content: systemPrompt,
   }
+
   return [injected, ...request.messages]
+}
+
+/**
+ * 获取完整的请求 Prompt（用于 Debug）
+ */
+export function getFullPromptForDebug(
+  request: StreamChatRequest,
+  customInstruction?: string,
+  referenceFiles?: ReferenceFile[]
+): string {
+  const messages = buildInjectedMessages(request, customInstruction, referenceFiles)
+  return messages.map((m) => `[${m.role.toUpperCase()}]\n${m.content}`).join('\n\n---\n\n')
 }
 
 function parseSseLines(buffer: string): { events: string[]; rest: string } {
@@ -64,7 +97,7 @@ export async function* streamChat(request: StreamChatRequest): AsyncGenerator<st
     body: JSON.stringify({
       model: request.model.model,
       stream: true,
-      messages: buildInjectedMessages(request),
+      messages: buildInjectedMessages(request, request.customInstruction, request.referenceFiles),
     }),
     signal: request.signal,
   })
