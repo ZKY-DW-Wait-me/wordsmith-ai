@@ -124,8 +124,11 @@ export default function NewPage() {
         }`}
       >
         <div className="flex h-full flex-col overflow-hidden">
+          {/* Safe zone for Windows title bar - drag region */}
+          <div className="h-9 w-full shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+
           {/* Header */}
-          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/50 px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/50 px-4 pb-3">
             <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">智囊配置</span>
             <Button variant="ghost" size="icon" onClick={() => setLeftCollapsed(true)} className="h-7 w-7">
               <PanelLeftClose size={14} />
@@ -215,6 +218,8 @@ export default function NewPage() {
 
       {/* Middle Column: Chat Workspace */}
       <main className="flex h-full min-w-0 flex-1 flex-col bg-white">
+        {/* Safe zone for Windows title bar - drag region */}
+        <div className="h-9 w-full shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
         <ChatPanel
           baseUrl={settings.ai.baseUrl}
           apiKey={settings.ai.apiKey}
@@ -273,8 +278,11 @@ export default function NewPage() {
         }`}
       >
         <div className="flex h-full flex-col overflow-hidden">
-          {/* Toolbar */}
-          <div className="flex shrink-0 items-center justify-between px-4 py-3">
+          {/* Safe zone for Windows title bar buttons */}
+          <div className="h-9 w-full shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+
+          {/* Toolbar - below safe zone */}
+          <div className="flex shrink-0 items-center justify-between px-4 pb-3">
             <span className="text-xs font-medium text-zinc-500">预览</span>
             <div className="flex items-center gap-1">
               <Button

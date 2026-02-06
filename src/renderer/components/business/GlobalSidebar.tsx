@@ -30,17 +30,10 @@ export function GlobalSidebar() {
       >
         {/* Brand Logo */}
         <div
-          className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <Sparkles size={18} className="text-white" />
-        </div>
-
-        {/* Brand Text - Vertical */}
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="font-serif text-[10px] font-light tracking-widest text-zinc-500" style={{ writingMode: 'vertical-rl' }}>
-            WordSmith
-          </span>
         </div>
       </div>
 
