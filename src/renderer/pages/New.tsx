@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FileText, Upload, X, Copy, Code, RefreshCw,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
-  Sparkles, ArrowRight, Maximize2, ExternalLink, AlertCircle
+  Sparkles, ArrowRight, Maximize2, ExternalLink, AlertCircle, FileCode2
 } from 'lucide-react'
 import { guardHtml } from '../lib/protocol-guard'
 import { getTemplateById } from '../lib/templates'
 import { ChatPanel } from '../components/business/ChatPanel'
 import { useAppStore } from '../store/useAppStore'
 import { Button } from '../components/ui/button'
+import { Dialog, DialogHeader, DialogTitle, DialogClose, DialogContent, DialogFooter } from '../components/ui/Dialog'
 import { toast } from '../store/useToastStore'
 
 export default function NewPage() {
@@ -31,6 +32,7 @@ export default function NewPage() {
 
   const [showSource, setShowSource] = useState(false)
   const [showFullscreen, setShowFullscreen] = useState(false)
+  const [showVbaMacro, setShowVbaMacro] = useState(false)
 
   // Panel collapse states
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -312,6 +314,15 @@ export default function NewPage() {
                 <ExternalLink size={14} />
               </Button>
               <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowVbaMacro(true)}
+                className="h-7 w-7"
+                title="VBA 宏助手"
+              >
+                <FileCode2 size={14} />
+              </Button>
+              <Button
                 variant="default"
                 size="icon"
                 onClick={copyToClipboard}
@@ -395,6 +406,121 @@ export default function NewPage() {
           </div>
         </div>
       )}
+
+      {/* VBA Macro Helper Dialog */}
+      <VbaMacroDialog open={showVbaMacro} onClose={() => setShowVbaMacro(false)} />
     </div>
+  )
+}
+
+const VBA_CODE = `Sub LatexToWordMath_Robust_Final()
+    Dim rng As Range
+    Dim mathRng As Range
+    Dim rawContent As String
+
+    Application.ScreenUpdating = False
+
+    ' --- 第一阶段：处理行间公式 $$...$$ ---
+    Set rng = ActiveDocument.Content
+    With rng.Find
+        .ClearFormatting
+        .Text = "\\$\\$*\\$\\$"
+        .MatchWildcards = True
+        Do While .Execute
+            ' 创建副本区域进行精准切割，保留论坛原始的稳健逻辑
+            Set mathRng = rng.Duplicate
+            mathRng.MoveEnd Unit:=wdCharacter, Count:=-2
+            mathRng.Start = mathRng.Start + 2
+
+            rawContent = mathRng.Text
+            rng.Text = rawContent ' 将 $$ 内容替换为纯文本
+
+            ' 关键动作：添加公式对象并强制"由线性转为专业格式"
+            ActiveDocument.OMaths.Add rng
+            rng.OMaths(1).BuildUp ' 强制渲染成分数线、根号等专业样式
+
+            rng.Collapse wdCollapseEnd
+        Loop
+    End With
+
+    ' --- 第二阶段：处理行内公式 $...$ ---
+    Set rng = ActiveDocument.Content
+    With rng.Find
+        .ClearFormatting
+        .Text = "\\$*\\$"
+        .MatchWildcards = True
+        Do While .Execute
+            ' 安全检查：确保不是刚刚处理过的公式
+            If rng.OMaths.Count = 0 Then
+                Set mathRng = rng.Duplicate
+                mathRng.MoveEnd Unit:=wdCharacter, Count:=-1
+                mathRng.Start = mathRng.Start + 1
+
+                rawContent = mathRng.Text
+                rng.Text = rawContent
+
+                ActiveDocument.OMaths.Add rng
+                ' 再次强制触发专业排版渲染
+                rng.OMaths(1).BuildUp
+            End If
+            rng.Collapse wdCollapseEnd
+        Loop
+    End With
+
+    Application.ScreenUpdating = True
+    MsgBox "全文档公式及排版已深度转换完成！"
+End Sub`
+
+function VbaMacroDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(VBA_CODE)
+      toast({ title: '已复制 VBA 代码', variant: 'success' })
+    } catch {
+      toast({ title: '复制失败', variant: 'destructive' })
+    }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} className="max-w-3xl">
+      <DialogHeader>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+            <FileCode2 size={20} />
+          </div>
+          <div>
+            <DialogTitle>VBA 宏助手</DialogTitle>
+            <p className="mt-0.5 text-xs text-zinc-500">将 LaTeX 公式转换为 Word 原生公式</p>
+          </div>
+        </div>
+        <DialogClose onClose={onClose} />
+      </DialogHeader>
+      <DialogContent className="space-y-4">
+        <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <strong>使用场景：</strong>当文档中包含 <code className="rounded bg-amber-100 px-1">$...$</code> 或 <code className="rounded bg-amber-100 px-1">$$...$$</code> 格式的 LaTeX 公式时，运行此宏可将其转换为 Word 原生公式。
+        </div>
+        <div className="max-h-[280px] overflow-auto rounded-xl bg-zinc-900 p-4">
+          <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-zinc-300">
+            {VBA_CODE}
+          </pre>
+        </div>
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-zinc-700">使用步骤</h4>
+          <ol className="list-decimal space-y-1.5 pl-5 text-sm text-zinc-600">
+            <li>在 Word 中按 <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1.5 py-0.5 text-xs font-medium">Alt + F11</kbd> 打开 VBA 编辑器</li>
+            <li>在左侧项目窗口中，双击 <strong>ThisDocument</strong></li>
+            <li>将上方代码粘贴到右侧代码区域</li>
+            <li>按 <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1.5 py-0.5 text-xs font-medium">F5</kbd> 运行宏，或关闭编辑器后通过「视图 → 宏」运行</li>
+          </ol>
+        </div>
+      </DialogContent>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>关闭</Button>
+        <Button onClick={copyCode} className="gap-2">
+          <Copy size={14} />
+          复制代码
+        </Button>
+      </DialogFooter>
+    </Dialog>
   )
 }

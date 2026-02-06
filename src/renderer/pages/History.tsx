@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Search, FileX2, Clock, MessageSquare, Bug, X, Sparkles, Wrench } from 'lucide-react'
+import { Trash2, Search, FileX2, Clock, MessageSquare, Bug, X, Sparkles, Wrench, AlertTriangle } from 'lucide-react'
 import { CopyToWordButton } from '../components/business/CopyToWordButton'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
+import { ConfirmDialog } from '../components/ui/Dialog'
 import { useAppStore, type EnhancedChatMessage } from '../store/useAppStore'
 import { useI18n } from '../store/useI18nStore'
 
@@ -16,6 +17,8 @@ export default function HistoryPage() {
   const loadChat = useAppStore((s) => s.loadChat)
   const [search, setSearch] = useState('')
   const [debugModal, setDebugModal] = useState<{ open: boolean; content: string }>({ open: false, content: '' })
+  const [clearConfirm, setClearConfirm] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: '' })
 
   const filtered = history.filter((item) => {
     if (!search) return true
@@ -50,9 +53,7 @@ export default function HistoryPage() {
         </div>
         <Button
           variant="outline"
-          onClick={() => {
-            if (confirm(t.history.clearConfirm)) clearHistory()
-          }}
+          onClick={() => setClearConfirm(true)}
           disabled={hasNoHistory}
           className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700"
         >
@@ -146,9 +147,7 @@ export default function HistoryPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 shrink-0 text-zinc-400 hover:bg-red-50 hover:text-red-500"
-                        onClick={() => {
-                          if (confirm(t.history.deleteConfirm)) deleteHistoryItem(item.id)
-                        }}
+                        onClick={() => setDeleteConfirm({ open: true, id: item.id })}
                         title="删除此记录"
                       >
                         <Trash2 size={16} />
@@ -208,6 +207,32 @@ export default function HistoryPage() {
           </div>
         </div>
       )}
+
+      {/* Clear History Confirm Dialog */}
+      <ConfirmDialog
+        open={clearConfirm}
+        onClose={() => setClearConfirm(false)}
+        onConfirm={clearHistory}
+        title="清空所有历史记录"
+        description="此操作将永久删除所有历史记录，且无法恢复。确定要继续吗？"
+        confirmText="确认清空"
+        cancelText="取消"
+        variant="destructive"
+        icon={<AlertTriangle size={20} />}
+      />
+
+      {/* Delete Single Item Confirm Dialog */}
+      <ConfirmDialog
+        open={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, id: '' })}
+        onConfirm={() => deleteHistoryItem(deleteConfirm.id)}
+        title="删除此记录"
+        description="确定要删除这条历史记录吗？此操作无法撤销。"
+        confirmText="确认删除"
+        cancelText="取消"
+        variant="destructive"
+        icon={<AlertTriangle size={20} />}
+      />
     </div>
   )
 }

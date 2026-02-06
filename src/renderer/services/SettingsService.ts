@@ -26,16 +26,15 @@ export class SettingsService {
    */
   resetToDefaults() {
     const store = useAppStore.getState()
-    
+
     // 1. 重置设置
-    store.setTheme('system')
     store.updateAi({ baseUrl: 'https://api.openai.com', apiKey: '', model: 'gpt-4o-mini' })
-    store.updateTypography({ 
-      fontFamily: defaultTemplate.style.fontFamily, 
-      fontSizePt: defaultTemplate.style.fontSizePt 
+    store.updateTypography({
+      fontFamily: defaultTemplate.style.fontFamily,
+      fontSizePt: defaultTemplate.style.fontSizePt
     })
     store.setTemplateId('default')
-    
+
     // 2. 重置高级设置 (如果有)
     // store.updateAdvanced(...)
   }
