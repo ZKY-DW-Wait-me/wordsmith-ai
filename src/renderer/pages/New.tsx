@@ -281,73 +281,75 @@ export default function NewPage() {
           {/* Safe zone for Windows title bar buttons */}
           <div className="h-9 w-full shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
 
-          {/* Toolbar - below safe zone, with right padding for Windows caption buttons */}
-          <div className="flex shrink-0 items-center justify-between px-4 pb-3" style={{ paddingRight: '145px' }}>
-            <span className="text-xs font-medium text-zinc-500">预览</span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant={showSource ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setShowSource(!showSource)}
-                className="h-7 w-7"
-                title="源码"
-              >
-                <Code size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={refreshPreview}
-                className="h-7 w-7"
-                title="刷新"
-              >
-                <RefreshCw size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowFullscreen(true)}
-                className="h-7 w-7"
-                title="全屏预览"
-              >
-                <Maximize2 size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={openPreviewWindow}
-                className="h-7 w-7"
-                title="新窗口打开"
-              >
-                <ExternalLink size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowVbaMacro(true)}
-                className="h-7 w-7"
-                title="VBA 宏助手"
-              >
-                <FileCode2 size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={copyToClipboard}
-                className="h-7 w-7"
-                title="复制"
-              >
-                <Copy size={14} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setRightCollapsed(true)}
-                className="h-7 w-7"
-              >
-                <PanelRightClose size={14} />
-              </Button>
+          {/* Toolbar - below safe zone */}
+          <div className="flex shrink-0 flex-col gap-2 px-4 pb-3">
+            <div className="flex items-center">
+              <span className="text-xs font-medium text-zinc-500">预览</span>
+              <div className="ml-4 flex items-center gap-1">
+                <Button
+                  variant={showSource ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setShowSource(!showSource)}
+                  className="h-7 w-7"
+                  title="源码"
+                >
+                  <Code size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={refreshPreview}
+                  className="h-7 w-7"
+                  title="刷新"
+                >
+                  <RefreshCw size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowFullscreen(true)}
+                  className="h-7 w-7"
+                  title="全屏预览"
+                >
+                  <Maximize2 size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={openPreviewWindow}
+                  className="h-7 w-7"
+                  title="新窗口打开"
+                >
+                  <ExternalLink size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowVbaMacro(true)}
+                  className="h-7 w-7"
+                  title="VBA 宏助手"
+                >
+                  <FileCode2 size={14} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setRightCollapsed(true)}
+                  className="h-7 w-7"
+                >
+                  <PanelRightClose size={14} />
+                </Button>
+              </div>
             </div>
+            {/* Copy button - always visible */}
+            <Button
+              onClick={copyToClipboard}
+              className="w-full gap-2"
+              disabled={!finalHtml}
+            >
+              <Copy size={14} />
+              复制到剪贴板
+            </Button>
           </div>
 
           {/* Preview Area */}
@@ -385,32 +387,48 @@ export default function NewPage() {
 
       {/* Fullscreen Preview Modal */}
       {showFullscreen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white">
-          {/* Safe zone for Windows title bar */}
-          <div className="h-9 w-full shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
-          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-6 py-4" style={{ paddingRight: '145px' }}>
-            <h2 className="text-lg font-semibold text-zinc-900">全屏预览</h2>
-            <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-zinc-100">
+          {/* Header with safe zone for Windows title bar */}
+          <div
+            className="flex shrink-0 items-center border-b border-zinc-200 bg-white px-6"
+            style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+          >
+            <h2
+              className="py-4 text-lg font-semibold text-zinc-900"
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            >
+              全屏预览
+            </h2>
+            <div
+              className="ml-6 flex items-center gap-2"
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            >
               <Button variant="outline" onClick={openPreviewWindow} className="gap-2">
                 <ExternalLink size={14} />
                 新窗口
               </Button>
-              <Button variant="outline" onClick={copyToClipboard} className="gap-2">
+              <Button onClick={copyToClipboard} className="gap-2">
                 <Copy size={14} />
                 复制到剪贴板
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setShowFullscreen(false)}>
+            </div>
+            {/* Safe zone spacer for Windows caption buttons */}
+            <div className="flex-1" />
+            <div
+              className="flex items-center"
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            >
+              <Button variant="ghost" size="icon" onClick={() => setShowFullscreen(false)} className="mr-[150px]">
                 <X size={18} />
               </Button>
             </div>
           </div>
-          <div className="min-h-0 flex-1 overflow-auto bg-zinc-100 p-8">
-            <div className="mx-auto max-w-4xl rounded-xl bg-white p-8 shadow-xl">
-              <iframe
-                title="fullscreen-preview"
-                className="min-h-[600px] w-full border-0"
-                sandbox="allow-same-origin"
-                srcDoc={finalHtml}
+          {/* Content area - single scroll container */}
+          <div className="flex-1 overflow-auto p-8">
+            <div className="mx-auto max-w-5xl rounded-xl bg-white p-8 shadow-xl">
+              <div
+                className="prose prose-zinc max-w-none"
+                dangerouslySetInnerHTML={{ __html: finalHtml }}
               />
             </div>
           </div>
