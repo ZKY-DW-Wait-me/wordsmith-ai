@@ -35,7 +35,8 @@
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
     "deleteAppDataOnUninstall": false,
-    "shortcutName": "WordSmith AI"
+    "shortcutName": "WordSmith AI",
+    "include": "build/installer.nsh"
   },
   "linux": {
     "target": [
