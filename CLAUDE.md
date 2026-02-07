@@ -4,120 +4,75 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-WordSmith AI (智排精灵) is an Electron-based desktop application that converts AI-generated content into properly formatted Word documents through an "AI → HTML (Inline CSS) → Clipboard → Word" workflow.
+WordSmith AI (智排精灵) is an Electron + React + TypeScript desktop application for AI-powered document formatting. It generates Word-compatible HTML through the pipeline: **AI → HTML (Inline CSS) → Clipboard → Word**.
 
-## Common Commands
+## Commands
 
 ```bash
-# Development
-npm run dev          # Start development mode (runs cleanup + vite)
-npm run start        # Alias for dev
+# Development (Windows - kills stale Electron processes first)
+npm run dev
 
-# Build & Package
-npm run build        # Full build: TypeScript compile + Vite build + electron-builder
+# Build for production (Windows)
+npm run build
 
-# Code Quality
-npm run lint         # ESLint on .ts and .tsx files
-npm test             # Run Vitest tests once
-npm run test:watch   # Run Vitest in watch mode
+# Lint
+npm run lint
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
 ```
 
-### Running Single Tests
-
-Vitest supports filtering by test name or file path:
-
-```bash
-# Run tests in a specific file
-npx vitest run src/renderer/lib/protocol-guard.test.ts
-
-# Run tests matching a pattern
-npx vitest run -t "should convert units"
-```
-
-### China Mirror Setup (if needed)
-
-```bash
-# Set npm registry
-npm config set registry https://registry.npmmirror.com
-
-# Install with Electron mirror (PowerShell)
+For China users, set Electron mirror before install/dev:
+```powershell
 $env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"; npm install
-
-# Dev with mirror (PowerShell)
-$env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"; npm run dev
 ```
 
 ## Architecture
 
-### Electron Process Structure
+### Process Structure
+- **Main process** (`src/main/`): Electron window management, IPC handlers, preload bridge
+- **Renderer process** (`src/renderer/`): React application
 
-- **Main Process** (`src/main/index.ts`): Window management, clipboard IPC handler
-- **Preload Script** (`src/main/preload.ts`): Context bridge exposing `window.wordsmith.clipboard.write()`
-- **Renderer Process** (`src/renderer/`): React SPA with HashRouter
+### Key Directories
+- `src/renderer/pages/` - Route pages: New (editor), History, Settings, Help
+- `src/renderer/components/business/` - Feature components: ChatPanel, HtmlEditor, PreviewFrame, CopyToWordButton
+- `src/renderer/components/ui/` - Reusable UI primitives
+- `src/renderer/store/` - Zustand stores (useAppStore for main state, useI18nStore, useToastStore)
+- `src/renderer/services/` - AI service, settings persistence, error handling
+- `src/renderer/lib/` - Utilities including protocol-guard and system-prompts
 
-### Core Data Flow
+### State Management
+Global state in `useAppStore` (Zustand with persistence):
+- `settings` - AI config, typography defaults, app preferences
+- `workspace` - Current editing session (HTML draft, messages, mode)
+- `history` - Saved conversations (max 50)
+- `referenceFiles` - Uploaded reference documents
 
-1. **ChatPanel** → User sends message to AI API (OpenAI-compatible)
-2. **AI Response** → Returns HTML with inline CSS following the "排版协议" (Typesetting Protocol)
-3. **Protocol Guard** (`src/renderer/lib/protocol-guard.ts`): Sanitizes HTML before preview/clipboard
-   - Removes `<style>` tags and external stylesheets
-   - Converts `px` units to `pt`
-   - Enforces table attributes (`border-collapse`, borders)
-   - Strips MathML (Word doesn't support it well)
-   - Applies default typography (font family, size)
-4. **PreviewFrame** → Renders sanitized HTML in sandboxed iframe
-5. **CopyToWordButton** → Writes HTML + plain text to system clipboard via IPC
-6. **User** → Pastes into Microsoft Word with formatting preserved
+### AI Integration
+- `ai-service.ts` - OpenAI-compatible streaming API client
+- `system-prompts.ts` - Builds system prompts with typography rules
+- `protocol-guard.ts` - Sanitizes HTML output for Word compatibility
 
-### State Management (Zustand)
+## Typography Protocol (Critical)
 
-- **`useAppStore`** (`src/renderer/store/useAppStore.ts`): Main application state with persistence
-  - `settings`: Theme, AI config (baseUrl, apiKey, model), typography defaults, timeout, eye care mode
-  - `presets`: User-defined prompt templates
-  - `history`: Generated documents (limited to 50 items)
-  - All state persisted to localStorage via `persist` middleware
+All generated HTML must follow these rules for Word paste compatibility:
 
-### Key Constraints (排版协议)
+1. **Inline styles only** - No `<style>` tags or external stylesheets
+2. **Units must be `pt`** - No px/rem/em/%/vw/vh (Guard Layer auto-converts px→pt)
+3. **Body base style**: `margin:0; padding:0; font-family:'SimSun';`
+4. **Tables**: `align="center"` with `width:440pt; border-collapse:collapse;`
+5. **Math formulas**: Keep `$...$` or `$$...$$` as-is; remove MathML tags
 
-The Protocol Guard enforces strict rules for Word compatibility:
+The `guardHtml()` function in `protocol-guard.ts` enforces these rules before clipboard copy.
 
-- Only inline styles (`style="..."`), no `<style>` tags or external stylesheets
-- All length units must be `pt` (converted automatically from `px`)
-- Body base styles: `margin:0; padding:0; font-family:'SimSun';`
-- Tables must have `border-collapse:collapse` and visible borders
-- Math formulas should use `$...$` or `$$...$$` LaTeX syntax; MathML is removed
+## Testing
 
-### Project Structure
+Tests use Vitest with jsdom environment. Test files follow `*.test.ts` pattern in `src/`.
 
+Run a single test file:
+```bash
+npx vitest run src/renderer/lib/protocol-guard.test.ts
 ```
-src/
-├── main/               # Electron main process
-│   ├── index.ts       # Entry, window creation, clipboard IPC
-│   └── preload.ts     # Context bridge
-├── renderer/
-│   ├── main.tsx       # React entry (HashRouter)
-│   ├── App.tsx        # Root component with routes
-│   ├── pages/         # Route pages: New, History, Templates, Settings, Help
-│   ├── components/
-│   │   ├── business/  # Domain components: ChatPanel, HtmlEditor, PreviewFrame, etc.
-│   │   └── ui/        # Reusable UI primitives
-│   ├── lib/           # Utilities: protocol-guard.ts, system-prompts.ts, templates/
-│   ├── store/         # Zustand stores
-│   └── types/         # TypeScript definitions
-```
-
-### Build Configuration
-
-- **Vite** (`vite.config.ts`): Dev server at `127.0.0.1:5173`, electron-vite plugin for main/preload builds
-- **TypeScript**: Strict mode with `noUnusedLocals` and `noUnusedParameters`
-- **ESLint**: TypeScript + React Hooks rules
-- **electron-builder** (`electron-builder.json5`): Packages for Windows (NSIS), Mac (DMG), Linux (AppImage)
-- **Output**: `dist/` (renderer), `dist-electron/` (main), `release/` (packaged app)
-
-### Important Technical Notes
-
-- Uses ES Modules (`"type": "module"` in package.json)
-- HashRouter is required (not BrowserRouter) for Electron file:// protocol compatibility
-- Context isolation is enabled in Electron; all Node API access goes through preload script
-- Monaco Editor is used for HTML editing with syntax highlighting via PrismJS
-- Tailwind CSS v4 is used with PostCSS for styling
