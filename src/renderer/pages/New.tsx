@@ -204,13 +204,13 @@ export default function NewPage() {
         </div>
       </aside>
 
-      {/* Left Collapse Toggle (when collapsed) */}
+      {/* Left Collapse Toggle (when collapsed) - positioned below safe zone */}
       {leftCollapsed && (
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setLeftCollapsed(false)}
-          className="absolute left-2 top-3 z-10 h-8 w-8 rounded-lg bg-white shadow-md"
+          className="absolute left-2 top-12 z-10 h-8 w-8 rounded-lg bg-white shadow-md"
         >
           <PanelLeftOpen size={14} />
         </Button>
@@ -259,13 +259,13 @@ export default function NewPage() {
         />
       </main>
 
-      {/* Right Collapse Toggle (when collapsed) */}
+      {/* Right Collapse Toggle (when collapsed) - positioned below safe zone */}
       {rightCollapsed && (
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setRightCollapsed(false)}
-          className="absolute right-3 top-3 z-10 h-8 w-8 rounded-lg bg-white shadow-md"
+          className="absolute right-3 top-12 z-10 h-8 w-8 rounded-lg bg-white shadow-md"
         >
           <PanelRightOpen size={14} />
         </Button>
@@ -281,8 +281,8 @@ export default function NewPage() {
           {/* Safe zone for Windows title bar buttons */}
           <div className="h-9 w-full shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
 
-          {/* Toolbar - below safe zone */}
-          <div className="flex shrink-0 items-center justify-between px-4 pb-3">
+          {/* Toolbar - below safe zone, with right padding for Windows caption buttons */}
+          <div className="flex shrink-0 items-center justify-between px-4 pb-3" style={{ paddingRight: '145px' }}>
             <span className="text-xs font-medium text-zinc-500">预览</span>
             <div className="flex items-center gap-1">
               <Button
@@ -331,7 +331,7 @@ export default function NewPage() {
                 <FileCode2 size={14} />
               </Button>
               <Button
-                variant="default"
+                variant="ghost"
                 size="icon"
                 onClick={copyToClipboard}
                 className="h-7 w-7"
@@ -386,14 +386,16 @@ export default function NewPage() {
       {/* Fullscreen Preview Modal */}
       {showFullscreen && (
         <div className="fixed inset-0 z-50 flex flex-col bg-white">
-          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-6 py-4">
+          {/* Safe zone for Windows title bar */}
+          <div className="h-9 w-full shrink-0" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />
+          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-6 py-4" style={{ paddingRight: '145px' }}>
             <h2 className="text-lg font-semibold text-zinc-900">全屏预览</h2>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={openPreviewWindow} className="gap-2">
                 <ExternalLink size={14} />
                 新窗口
               </Button>
-              <Button variant="default" onClick={copyToClipboard} className="gap-2">
+              <Button variant="outline" onClick={copyToClipboard} className="gap-2">
                 <Copy size={14} />
                 复制到剪贴板
               </Button>

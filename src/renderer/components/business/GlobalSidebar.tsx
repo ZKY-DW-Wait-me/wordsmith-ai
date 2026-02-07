@@ -23,9 +23,9 @@ export function GlobalSidebar() {
 
   return (
     <aside className="relative z-50 flex h-full w-16 shrink-0 flex-col items-center border-r border-zinc-200/50 bg-zinc-100/50">
-      {/* Drag Region - Top area for window dragging */}
+      {/* Drag Region - Top area for window dragging, with extra padding for Windows caption */}
       <div
-        className="flex w-full shrink-0 flex-col items-center pb-2 pt-3"
+        className="flex w-full shrink-0 flex-col items-center pb-2 pt-8"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         {/* Brand Logo */}
