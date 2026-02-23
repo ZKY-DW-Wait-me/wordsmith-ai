@@ -1,7 +1,4 @@
 # CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
 WordSmith AI (智排精灵) is an Electron + React + TypeScript desktop application for AI-powered document formatting. It generates Word-compatible HTML through the pipeline: **AI → HTML (Inline CSS) → Clipboard → Word**.
