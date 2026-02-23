@@ -107,4 +107,3 @@ Tests use Vitest with jsdom environment (`vitest.config.ts`). Test files follow 
 - **Styling**: Tailwind CSS v4 (via `@tailwindcss/postcss` plugin). Eye-care mode toggles green-tinted backgrounds via `html.eye-care` class in `index.css`. `cn()` utility in `lib/cn.ts` is a simple falsy-filter joiner (not `clsx` or `tailwind-merge`).
 - **No dark mode**: Only light mode and optional eye-care mode.
 - **Default AI provider**: DeepSeek (`https://api.deepseek.com`, model `deepseek-chat`). Settings page has 7 pre-configured providers.
-- **Build output**: NSIS installer (Windows), DMG (Mac), AppImage (Linux). Output in `release/{version}/`. The installer is ~87MB (OCR engine excluded).
