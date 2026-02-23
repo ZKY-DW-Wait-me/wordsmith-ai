@@ -22,10 +22,32 @@ declare namespace NodeJS {
 }
 
 // Used in Renderer process, expose in `preload.ts`
+
+interface OcrEngineStatus {
+  installed: boolean
+  enginePath: string | null
+  missingModels: string[]
+}
+
 interface Window {
   wordsmith?: {
     clipboard: {
       write: (payload: { html: string; text: string }) => Promise<void>
+    }
+    ocr: {
+      recognize: (imagePath: string) => Promise<{
+        success: boolean
+        markdown: string
+        error?: string
+      }>
+      setEnginePath: (enginePath: string | null) => Promise<void>
+      getEngineStatus: () => Promise<OcrEngineStatus>
+      selectZipFile: () => Promise<string | null>
+      importEngineZip: (zipFilePath: string) => Promise<{
+        success: boolean
+        enginePath?: string
+        error?: string
+      }>
     }
     window: {
       minimize: () => void

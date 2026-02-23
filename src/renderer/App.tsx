@@ -12,6 +12,7 @@ import { PageLayout } from './layouts/PageLayout'
 
 function App() {
   const eyeCareMode = useAppStore((s) => s.settings.eyeCareMode)
+  const ocrEnginePath = useAppStore((s) => s.settings.ocrEnginePath)
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -20,6 +21,12 @@ function App() {
       root.classList.add('eye-care')
     }
   }, [eyeCareMode])
+
+  useEffect(() => {
+    if (window.wordsmith?.ocr?.setEnginePath) {
+      window.wordsmith.ocr.setEnginePath(ocrEnginePath)
+    }
+  }, [ocrEnginePath])
 
   return (
     <div className="flex h-full w-full bg-zinc-50">

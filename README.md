@@ -1,46 +1,55 @@
+ [简体中文](README.md) | [English](README.en-US.md)
 # WordSmith AI（智排精灵）
+> 基于HTML的word排版工具
 
-基于 AI 的智能文档排版桌面应用：通过 “AI → HTML（Inline CSS）→ Clipboard → Word” 的链路，最大化解决复制到 Word 时的格式错乱与公式问题。
+---
 
-## 开发
+## 📱 给用户的使用指南 (User Guide)
 
-1. 切换 npm 镜像（可选，国内推荐）
+### 🎯 程序介绍
+WordSmith AI 是利用HTML格式，通过严格提示词限制，与AI对话，进行文章段落排版，并复制粘贴回word中的便捷排版工具，同时支持数学物理公式渲染。既可以让AI直接生成文章，也可以根据word原有文章段落进行仿照排版，同时也支持对网页HTML复制的HTML格式进行清洗，精确符合word排版功能。最新版本已支持OCR。用户可以直接上传，拖拽图片进行文本，公式识别。
+
+
+### 📥 如何安装
+1.  下载最新版本的 `.exe` 文件（当前最新：**v1.1.0**）。
+3.  **注意**：OCR功能需在“设置-高级-OCR 图片识别引擎”中手动选择 zip 包进行导入。
+
+
+---
+
+## 🛠️ 给开发者的文档 (Developer Guide)
+
+### 技术栈
+
+Electron 30 + React 18 + TypeScript + Tailwind CSS v4 + Zustand + Vite
+
+### 环境准备
 
 ```bash
-npm config set registry https://registry.npmmirror.com
-```
-
-2. 安装依赖（如果 Electron 安装失败，可使用镜像）
-
-```bash
-# PowerShell
+# 1. 安装依赖（国内 Electron 下载慢可加镜像）
 $env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"; npm install
-```
 
-3. 启动开发模式
+# 2. 启动开发
+npm run dev
 
-```bash
-# PowerShell
-$env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"; npm run dev
-```
-
-## 关键约束（排版协议）
-
-- 只允许使用 `style="..."` 行内样式，禁止 `<style>` 标签与外链样式
-- 所有长度单位必须是 `pt`（会通过 Guard Layer 自动清洗/转换）
-- `body` 固定基础样式：`margin:0; padding:0; font-family:'SimSun';`
-- `table` 强制 `align="center"` 且 `style="width:440pt; border-collapse:collapse;"`
-- 数学公式保留 `$...$ / $$...$$` 原样；清除 MathML 等可能导致 Word 报错的标签
-
-## 测试与质量
-
-```bash
-npm run lint
-npm test
-```
-
-## 打包（Windows）
-
-```bash
+# 3. 打包
 npm run build
 ```
+
+### 排版协议
+
+核心约束 — 保证 HTML 粘贴到 Word 格式正确：
+
+- 仅行内样式，禁止 `<style>` 标签
+- 单位必须为 `pt`（Guard Layer 自动 px→pt ×0.75）
+- 表格 `align="center"`，`width:440pt; border-collapse:collapse;`
+- 数学公式保留 `$...$` / `$$...$$` 原样，清除 MathML
+
+### OCR 引擎
+
+不含在安装包中（约 2.5GB），用户通过「设置 → 高级」导入 zip。开发时将 `ocr_engine/` 放项目根目录即可自动检测。
+
+打包 OCR 引擎 zip：`powershell -ExecutionPolicy Bypass -File scripts/pack-ocr-engine.ps1`
+
+## 📄 开源协议 (License)
+本项目采用 [GPL v3](LICENSE) 协议开源。

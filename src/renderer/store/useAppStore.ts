@@ -58,6 +58,7 @@ export interface AppSettings {
   timeout: number
   eyeCareMode: boolean
   savePath: string
+  ocrEnginePath: string | null
 }
 
 /**
@@ -124,6 +125,7 @@ export const useAppStore = create<AppState>()(
         timeout: 60000,
         eyeCareMode: false,
         savePath: 'My Documents/WordSmith',
+        ocrEnginePath: null,
       },
       history: [],
       customInstruction: '',

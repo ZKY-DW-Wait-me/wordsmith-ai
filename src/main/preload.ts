@@ -6,6 +6,23 @@ contextBridge.exposeInMainWorld('wordsmith', {
       return ipcRenderer.invoke('clipboard:write', payload)
     },
   },
+  ocr: {
+    recognize(imagePath: string) {
+      return ipcRenderer.invoke('ocr:recognize', imagePath)
+    },
+    setEnginePath(enginePath: string | null) {
+      return ipcRenderer.invoke('ocr:setEnginePath', enginePath)
+    },
+    getEngineStatus() {
+      return ipcRenderer.invoke('ocr:getEngineStatus')
+    },
+    selectZipFile() {
+      return ipcRenderer.invoke('ocr:selectZipFile')
+    },
+    importEngineZip(zipFilePath: string) {
+      return ipcRenderer.invoke('ocr:importEngineZip', zipFilePath)
+    },
+  },
   window: {
     minimize() {
       ipcRenderer.send('window:minimize')

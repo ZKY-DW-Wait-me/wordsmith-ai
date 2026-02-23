@@ -1,6 +1,9 @@
-import { app, BrowserWindow, clipboard, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { mkdir, rm, rename, readdir } from 'node:fs/promises'
+import extract from 'extract-zip'
+import { CpuOcrProvider, type OcrResult, type OcrEngineStatus } from './ocr-provider'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -70,6 +73,122 @@ ipcMain.handle('clipboard:write', async (_event, payload: { html: string; text: 
     text: payload.text,
   })
 })
+
+// OCR IPC
+const ocrProvider = new CpuOcrProvider()
+
+ipcMain.handle('ocr:recognize', async (_event, imagePath: string): Promise<OcrResult> => {
+  try {
+    if (!imagePath || typeof imagePath !== 'string') {
+      return { success: false, markdown: '', error: 'Invalid image path.' }
+    }
+    return await ocrProvider.recognize(imagePath)
+  } catch (err) {
+    return { success: false, markdown: '', error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+})
+
+ipcMain.handle('ocr:setEnginePath', async (_event, enginePath: string | null): Promise<void> => {
+  ocrProvider.setEnginePath(enginePath)
+})
+
+ipcMain.handle('ocr:getEngineStatus', async (): Promise<OcrEngineStatus> => {
+  return ocrProvider.getEngineStatus()
+})
+
+ipcMain.handle('ocr:selectZipFile', async (): Promise<string | null> => {
+  const result = await dialog.showOpenDialog({
+    title: '选择 OCR 引擎压缩包',
+    filters: [{ name: 'ZIP 压缩包', extensions: ['zip'] }],
+    properties: ['openFile'],
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  return result.filePaths[0]
+})
+
+ipcMain.handle('ocr:importEngineZip', async (_event, zipPath: string): Promise<{ success: boolean; enginePath?: string; error?: string }> => {
+  const userDataPath = app.getPath('userData')
+  const tempDir = path.join(userDataPath, 'ocr_engine_temp')
+  const finalDir = path.join(userDataPath, 'ocr_engine')
+
+  try {
+    // 1. Clean up any previous temp directory
+    await rm(tempDir, { recursive: true, force: true })
+
+    // 2. Create temp directory
+    await mkdir(tempDir, { recursive: true })
+
+    // 3. Extract zip to temp
+    await extract(zipPath, { dir: tempDir })
+
+    // 4. Resolve the actual engine root (find python/ + paddlex_home/)
+    const engineRoot = await resolveEngineRoot(tempDir)
+    if (!engineRoot) {
+      await rm(tempDir, { recursive: true, force: true })
+      return { success: false, error: '压缩包结构不正确：未找到 OCR 引擎文件。请确认压缩包包含 python/、site-packages/ 和 paddlex_home/ 目录。' }
+    }
+
+    // 5. Validate models
+    const missing = await CpuOcrProvider.validateEngineDir(engineRoot)
+    if (missing.length > 0) {
+      await rm(tempDir, { recursive: true, force: true })
+      return { success: false, error: `模型文件不完整，缺少以下模型：${missing.join(', ')}` }
+    }
+
+    // 6. Remove old engine
+    await rm(finalDir, { recursive: true, force: true })
+
+    // 7. Move resolved engine root to final location
+    await rename(engineRoot, finalDir)
+
+    // 8. Ensure func_ret directory exists (paddlex needs it)
+    await mkdir(path.join(finalDir, 'paddlex_home', 'func_ret'), { recursive: true })
+
+    // 9. Clean up temp
+    await rm(tempDir, { recursive: true, force: true })
+
+    // 10. Update provider
+    ocrProvider.setEnginePath(finalDir)
+
+    return { success: true, enginePath: finalDir }
+  } catch (err) {
+    // Clean up temp on any failure
+    await rm(tempDir, { recursive: true, force: true }).catch(() => {})
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return { success: false, error: `导入失败：${message}` }
+  }
+})
+
+/**
+ * Find the OCR engine root within the extracted temp dir.
+ * The engine root is a directory containing python/, site-packages/, and paddlex_home/.
+ * Tries:
+ *   - temp/ directly (ocr_engine contents at top level)
+ *   - temp/ocr_engine/
+ *   - temp/<single-wrapper>/ (any single subdirectory)
+ */
+async function resolveEngineRoot(tempDir: string): Promise<string | null> {
+  // Check if a directory is a valid engine root
+  if (await CpuOcrProvider.hasRuntime(tempDir)) return tempDir
+
+  // Try temp/ocr_engine/
+  const ocrEngineSub = path.join(tempDir, 'ocr_engine')
+  if (await CpuOcrProvider.hasRuntime(ocrEngineSub)) return ocrEngineSub
+
+  // Try single-level wrapper
+  try {
+    const entries = await readdir(tempDir, { withFileTypes: true })
+    const dirs = entries.filter(e => e.isDirectory())
+    if (dirs.length === 1) {
+      const wrapperDir = path.join(tempDir, dirs[0].name)
+      if (await CpuOcrProvider.hasRuntime(wrapperDir)) return wrapperDir
+    }
+  } catch {
+    // ignore readdir errors
+  }
+
+  return null
+}
 
 // Window control IPC handlers
 ipcMain.on('window:minimize', () => {

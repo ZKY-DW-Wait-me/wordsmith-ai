@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FileText, Upload, X, Copy, Code, RefreshCw,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
-  Sparkles, ArrowRight, Maximize2, ExternalLink, AlertCircle, FileCode2
+  Sparkles, ArrowRight, Maximize2, ExternalLink, AlertCircle, FileCode2,
+  Loader2
 } from 'lucide-react'
 import { guardHtml } from '../lib/protocol-guard'
 import { getTemplateById } from '../lib/templates'
@@ -33,6 +34,7 @@ export default function NewPage() {
   const [showSource, setShowSource] = useState(false)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [showVbaMacro, setShowVbaMacro] = useState(false)
+  const [ocrLoading, setOcrLoading] = useState(false)
 
   // Panel collapse states
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -52,16 +54,69 @@ export default function NewPage() {
     updateWorkspace({ finalHtml: guarded.html, guardReport: guarded.report })
   }, [htmlDraft, activeTypography, updateWorkspace])
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files?.length) return
+  const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp']
+  const isImageFile = (file: File) => {
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase()
+    return IMAGE_EXTENSIONS.includes(ext)
+  }
+
+  const processFiles = async (files: FileList | File[]) => {
     for (const file of Array.from(files)) {
       if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
         const content = await file.text()
         addReferenceFile({ name: file.name, content })
+      } else if (isImageFile(file)) {
+        const filePath = (file as File & { path?: string }).path
+        if (!filePath) {
+          toast({ title: 'OCR 识别失败', description: '无法获取文件路径，请确认在 Electron 环境中运行。', variant: 'destructive' })
+          continue
+        }
+        if (!window.wordsmith?.ocr?.recognize) {
+          toast({ title: 'OCR 不可用', description: 'OCR 功能未就绪，请检查嵌入式 Python 环境。', variant: 'destructive' })
+          continue
+        }
+        setOcrLoading(true)
+        try {
+          const result = await window.wordsmith.ocr.recognize(filePath)
+          if (result.success) {
+            addReferenceFile({ name: `[OCR] ${file.name}`, content: result.markdown })
+          } else if (result.error === 'OCR_ENGINE_NOT_INSTALLED') {
+            toast({
+              title: 'OCR 引擎未安装',
+              description: '请前往「设置 → 高级」导入 OCR 引擎压缩包后再试。',
+              variant: 'warning',
+              duration: 8000,
+            })
+          } else {
+            toast({ title: 'OCR 识别失败', description: result.error || '未知错误', variant: 'destructive' })
+          }
+        } catch {
+          toast({ title: 'OCR 识别失败', description: '调用 OCR 进程时发生异常。', variant: 'destructive' })
+        } finally {
+          setOcrLoading(false)
+        }
       }
     }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length) return
+    await processFiles(files)
     e.target.value = ''
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.files?.length) {
+      processFiles(e.dataTransfer.files)
+    }
   }
 
   const copyToClipboard = async () => {
@@ -150,7 +205,7 @@ export default function NewPage() {
             </div>
 
             {/* Reference Files */}
-            <div>
+            <div onDragOver={handleDragOver} onDrop={handleDrop}>
               <label className="mb-2 block text-xs font-medium text-zinc-600">
                 参考文档
               </label>
@@ -158,7 +213,7 @@ export default function NewPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.md"
+                accept=".txt,.md,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp"
                 multiple
                 onChange={handleFileUpload}
                 className="hidden"
@@ -166,16 +221,16 @@ export default function NewPage() {
 
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50/50 px-3 py-3 text-xs text-zinc-500 transition-all hover:border-zinc-300 hover:bg-zinc-100/50"
+                disabled={ocrLoading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50/50 px-3 py-3 text-xs text-zinc-500 transition-all hover:border-zinc-300 hover:bg-zinc-100/50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Upload size={14} />
-                上传文档
+                {ocrLoading ? <><Loader2 size={14} className="animate-spin" /> OCR 识别中...</> : <><Upload size={14} /> 上传文档</>}
               </button>
 
               {/* PDF/Word 提示 */}
               <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-2 text-xs text-amber-700">
                 <AlertCircle size={12} className="mt-0.5 shrink-0" />
-                <span>仅支持 .txt/.md 格式。PDF/Word 请先提取文字后上传。</span>
+                <span>支持 .txt/.md 文本及 .png/.jpg 图片（OCR 识别）。PDF/Word 请先提取文字后上传。</span>
               </div>
 
               {referenceFiles.length > 0 && (

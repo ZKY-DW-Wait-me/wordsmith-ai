@@ -33,3 +33,11 @@ release
 
 # Claude settings
 .claude
+
+# OCR engine files (too large for git)
+wordsmith-ocr-engine.zip
+ocr_engine/
+
+# AI assistant docs (not part of source)
+AGENTS.md
+CLAUDE.md

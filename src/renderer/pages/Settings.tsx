@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  Globe, Palette, Bot, Wrench, Check, Loader2, X, ChevronDown, AlertTriangle
+  Globe, Palette, Bot, Wrench, Check, Loader2, X, ChevronDown, AlertTriangle,
+  CheckCircle, XCircle, FolderOpen
 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { useI18n, useLocale, useSetLocale } from '../store/useI18nStore'
@@ -42,8 +43,17 @@ export default function SettingsPage() {
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [resetConfirm, setResetConfirm] = useState(false)
+  const [ocrStatus, setOcrStatus] = useState<OcrEngineStatus | null>(null)
+  const [ocrImporting, setOcrImporting] = useState(false)
 
   const currentProvider = AI_PROVIDERS.find(p => p.url === settings.ai.baseUrl)
+
+  // Fetch OCR engine status when advanced tab is active
+  useEffect(() => {
+    if (activeTab === 'advanced' && window.wordsmith?.ocr?.getEngineStatus) {
+      window.wordsmith.ocr.getEngineStatus().then(setOcrStatus)
+    }
+  }, [activeTab])
 
   const testConnection = async () => {
     if (!settings.ai.apiKey || !settings.ai.baseUrl) {
@@ -89,6 +99,30 @@ export default function SettingsPage() {
     a.download = `wordsmith-settings-${Date.now()}.json`
     a.click()
     toast({ title: '配置已导出', variant: 'success' })
+  }
+
+  const handleImportOcrEngine = async () => {
+    if (!window.wordsmith?.ocr) return
+    try {
+      const zipPath = await window.wordsmith.ocr.selectZipFile()
+      if (!zipPath) return
+
+      setOcrImporting(true)
+      const result = await window.wordsmith.ocr.importEngineZip(zipPath)
+      if (result.success && result.enginePath) {
+        updateSettings({ ocrEnginePath: result.enginePath })
+        toast({ title: 'OCR 引擎导入成功', description: '图片文字识别功能已就绪。', variant: 'success' })
+        // Refresh status
+        const status = await window.wordsmith.ocr.getEngineStatus()
+        setOcrStatus(status)
+      } else {
+        toast({ title: 'OCR 引擎导入失败', description: result.error || '未知错误', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: 'OCR 引擎导入失败', description: '操作过程中发生异常。', variant: 'destructive' })
+    } finally {
+      setOcrImporting(false)
+    }
   }
 
   return (
@@ -373,6 +407,59 @@ export default function SettingsPage() {
                     onChange={(e) => updateSettings({ savePath: e.target.value })}
                     className="w-full rounded-lg border-0 bg-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
                   />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-zinc-200 bg-white p-5">
+              <h3 className="mb-4 text-sm font-medium text-zinc-900">
+                OCR 图片识别引擎
+              </h3>
+              <div className="space-y-3">
+                {/* Status */}
+                <div className="flex items-start gap-2">
+                  {ocrStatus?.installed ? (
+                    <>
+                      <CheckCircle size={16} className="mt-0.5 shrink-0 text-emerald-500" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-emerald-700">引擎已安装</p>
+                        <p className="truncate text-xs text-zinc-500">{ocrStatus.enginePath}</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={16} className="mt-0.5 shrink-0 text-amber-500" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-700">引擎未安装</p>
+                        <p className="text-xs text-zinc-500">请导入 OCR 引擎压缩包以启用图片文字识别功能</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Import button */}
+                <Button
+                  variant="outline"
+                  onClick={handleImportOcrEngine}
+                  disabled={ocrImporting}
+                  className="w-full gap-2"
+                >
+                  {ocrImporting ? (
+                    <><Loader2 size={14} className="animate-spin" /> 正在解压导入，请耐心等待...</>
+                  ) : (
+                    <><FolderOpen size={14} /> 导入 OCR 引擎压缩包 (.zip)</>
+                  )}
+                </Button>
+
+                {/* Instructions */}
+                <div className="rounded-lg bg-zinc-50 px-3 py-2.5 text-xs text-zinc-500">
+                  <p className="mb-1 font-medium text-zinc-600">使用说明：</p>
+                  <ol className="list-decimal space-y-0.5 pl-4">
+                    <li>下载 OCR 引擎包 (wordsmith-ocr-engine.zip，约 2.5GB)</li>
+                    <li>点击上方按钮选择下载的 zip 文件</li>
+                    <li>文件较大，解压导入需要数分钟，请耐心等待</li>
+                    <li>导入完成后即可使用图片文字识别功能</li>
+                  </ol>
                 </div>
               </div>
             </div>
