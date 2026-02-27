@@ -1,6 +1,12 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md) 
 # Changelog
-## v1.1.0 (Current)
+## v1.1.1 (Current)
+### Added
+- 新增 OCR 在线推理功能，用户可以在“设置-高级-OCR 图片识别”中，手动选择指定服务商和视觉模型用于OCR识别，且识别结果支持手动修正更改。
+### Changed
+- 调整了模型选择功能，从手动填入改变为可以获取模型列表，支持搜索模型名称，最近使用模型名称。
+
+## v1.1.0
 ### Added
 - 新增 OCR 功能，引入了 PaddleOCR，用户可以选择或拖拽图片进行识别。
 - OCR 功能为可选功能，需在“设置-高级-OCR 图片识别引擎”中手动选择 zip 包进行导入。

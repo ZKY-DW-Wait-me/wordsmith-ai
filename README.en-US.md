@@ -7,11 +7,11 @@
 ## 📱 User Guide
 
 ### 🎯 Program Introduction
-WordSmith AI is a convenient formatting tool that leverages HTML format and strict prompt constraints to interact with AI for article paragraph formatting, which can then be copied and pasted back into Word. It also supports rendering mathematical and physical formulas. The tool allows AI to directly generate articles, format content by imitating existing paragraphs from Word documents, and clean HTML content copied from web pages to precisely comply with Word's formatting capabilities. The **latest version** now supports OCR functionality. Users can directly upload or drag-and-drop images for text and formula recognition.
+WordSmith AI is a convenient formatting tool that leverages HTML format and strict prompt constraints to interact with AI for article paragraph formatting, which can then be copied and pasted back into Word. It also supports rendering mathematical and physical formulas. The tool allows AI to directly generate articles, format content by imitating existing paragraphs from Word documents, and clean HTML content copied from web pages to precisely comply with Word's formatting capabilities. The **latest version** now supports OCR functionality.You can choose between **local inference** and **cloud inference** modes, and the recognition results support manual secondary correction. Users can directly upload or drag-and-drop images for text and formula recognition.
 
 ### 📥 Installation Instructions
-1. Download the **latest** version of the `.exe` file (Current latest version: **v1.1.0**).
-2. **Note**: For the OCR feature, manually select and import the zip package in "Settings > Advanced > OCR Image Recognition Engine".
+1. Download the latest version of the .exe file (Current latest: v1.1.1).
+2. **Note**: For the OCR function, you need to manually select and import a zip package or fill in the API key of the corresponding service provider in "Settings - Advanced - OCR Image Recognition", and perform recognition by selecting the corresponding vision model.
 
 ---
 
