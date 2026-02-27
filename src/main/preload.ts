@@ -6,9 +6,16 @@ contextBridge.exposeInMainWorld('wordsmith', {
       return ipcRenderer.invoke('clipboard:write', payload)
     },
   },
+  models: {
+    fetch(url: string, apiKey: string) {
+      return ipcRenderer.invoke('models:fetch', url, apiKey) as Promise<{
+        ok: boolean; status?: number; body?: string; error?: string
+      }>
+    },
+  },
   ocr: {
-    recognize(imagePath: string) {
-      return ipcRenderer.invoke('ocr:recognize', imagePath)
+    recognize(imagePath: string, vlmConfig?: { baseUrl: string; apiKey: string; model: string; systemPrompt: string } | null) {
+      return ipcRenderer.invoke('ocr:recognize', imagePath, vlmConfig)
     },
     setEnginePath(enginePath: string | null) {
       return ipcRenderer.invoke('ocr:setEnginePath', enginePath)

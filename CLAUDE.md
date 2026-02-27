@@ -1,4 +1,7 @@
 # CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Project Overview
 
 WordSmith AI (智排精灵) is an Electron + React + TypeScript desktop application for AI-powered document formatting. It generates Word-compatible HTML through the pipeline: **AI → HTML (Inline CSS) → Clipboard → Word**.
@@ -41,6 +44,21 @@ $env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"; npm install
 - **Renderer process** (`src/renderer/`): React 18 application with HashRouter routing
 
 Security: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: false`.
+
+Dev server binds to `127.0.0.1:5173` (not `localhost`) to avoid DNS resolution issues on Windows.
+
+### IPC Channels
+
+| Channel | Purpose |
+|---------|---------|
+| `clipboard:write` | Write HTML+text to system clipboard |
+| `ocr:recognize` | Run OCR on an image file path |
+| `ocr:setEnginePath` | Update OCR engine root path |
+| `ocr:getEngineStatus` | Check OCR installation status |
+| `ocr:selectZipFile` | Open file dialog for OCR zip selection |
+| `ocr:importEngineZip` | Extract zip → validate → install engine |
+| `window:minimize/maximize/close` | Window controls (fire-and-forget via `send`) |
+| `window:isMaximized` | Query maximize state (via `invoke`) |
 
 ### Routing
 Routes in `App.tsx` using HashRouter. The New page (`/`) renders without `PageLayout` (has its own 3-column layout with per-column drag regions); all other pages (`/history`, `/settings`, `/help`) are wrapped in `PageLayout` which provides the Windows title bar safe zone (36px `h-9` drag region).
@@ -96,11 +114,19 @@ The `guardHtml()` function in `protocol-guard.ts` enforces these rules before cl
 
 ## Testing
 
-Tests use Vitest with jsdom environment (`vitest.config.ts`). Test files follow `*.test.ts` pattern in `src/`.
+Tests use Vitest with jsdom environment (`vitest.config.ts`). Test files follow `*.test.ts` pattern colocated with source in `src/`.
+
+## Code Conventions
+
+- **`cn()` utility** (`lib/cn.ts`): Simple falsy-filter joiner — `parts.filter(Boolean).join(' ')`. Not `clsx` or `tailwind-merge`; do not pass objects or arrays.
+- **Component organization**: `components/business/` for domain-specific, `components/ui/` for reusable primitives, `components/help/` for help page sections.
+- **Error feedback**: All user-facing errors route through `useToastStore` / `toast()`. No `alert()` or `confirm()`.
+- **Zustand selectors**: Use `useAppStore((s) => s.settings)` pattern; avoid selecting the entire store.
+- **Comments**: Codebase uses Chinese comments throughout.
 
 ## Platform Notes
 
 - **Windows-centric**: The `cleanup` script uses `taskkill`, title bar uses Windows overlay controls (`titleBarOverlay` at 36px), `PageLayout` accounts for Windows caption button safe zone.
-- **Styling**: Tailwind CSS v4 (via `@tailwindcss/postcss` plugin). Eye-care mode toggles green-tinted backgrounds via `html.eye-care` class in `index.css`. `cn()` utility in `lib/cn.ts` is a simple falsy-filter joiner (not `clsx` or `tailwind-merge`).
+- **Styling**: Tailwind CSS v4 (via `@tailwindcss/postcss` plugin). Eye-care mode toggles green-tinted backgrounds via `html.eye-care` class in `index.css`. Zinc color palette throughout.
 - **No dark mode**: Only light mode and optional eye-care mode.
 - **Default AI provider**: DeepSeek (`https://api.deepseek.com`, model `deepseek-chat`). Settings page has 7 pre-configured providers.

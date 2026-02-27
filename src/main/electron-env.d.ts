@@ -34,8 +34,21 @@ interface Window {
     clipboard: {
       write: (payload: { html: string; text: string }) => Promise<void>
     }
+    models: {
+      fetch: (url: string, apiKey: string) => Promise<{
+        ok: boolean
+        status?: number
+        body?: string
+        error?: string
+      }>
+    }
     ocr: {
-      recognize: (imagePath: string) => Promise<{
+      recognize: (imagePath: string, vlmConfig?: {
+        baseUrl: string
+        apiKey: string
+        model: string
+        systemPrompt: string
+      } | null) => Promise<{
         success: boolean
         markdown: string
         error?: string

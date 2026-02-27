@@ -22,3 +22,14 @@ FunctionEnd
   CreateDirectory $INSTDIR
   SetOutPath $INSTDIR
 !macroend
+
+!macro customUnInstall
+  ; 卸载时安全删除 OCR 引擎目录（仅删除安装目录下的 ocr_engine 子目录）
+  ${If} ${FileExists} "$INSTDIR\ocr_engine\*.*"
+    RMDir /r "$INSTDIR\ocr_engine"
+  ${EndIf}
+  ; 清理可能残留的临时解压目录
+  ${If} ${FileExists} "$INSTDIR\ocr_engine_temp\*.*"
+    RMDir /r "$INSTDIR\ocr_engine_temp"
+  ${EndIf}
+!macroend

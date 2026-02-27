@@ -1,16 +1,23 @@
 import { useState, useEffect } from 'react'
-import { Rocket, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Rocket, AlertTriangle, CheckCircle2, ChevronDown, Check } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
+import { AI_PROVIDERS } from '../../lib/providers'
+import { AI_RECOMMENDED_MODELS } from '../../lib/recommended-models'
 import { Button } from '../ui/button'
+import { ModelSelector } from '../ui/ModelSelector'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Input } from '../ui/input'
 import { cn } from '../../lib/cn'
 
 export function OnboardingModal() {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(1)
+  const [showDropdown, setShowDropdown] = useState(false)
   const settings = useAppStore((s) => s.settings)
   const updateAi = useAppStore((s) => s.updateAi)
+  const addRecentModel = useAppStore((s) => s.addRecentModel)
+  const removeRecentModel = useAppStore((s) => s.removeRecentModel)
+
+  const currentProvider = AI_PROVIDERS.find(p => p.url === settings.ai.baseUrl)
 
   useEffect(() => {
     const hasOnboarded = localStorage.getItem('wordsmith-onboarded')
@@ -41,7 +48,7 @@ export function OnboardingModal() {
             {step === 4 && '准备就绪！'}
           </CardTitle>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Step 1: Welcome */}
           {step === 1 && (
@@ -66,26 +73,79 @@ export function OnboardingModal() {
                 请先配置您的 AI 服务商。不用担心，稍后可以在【设置】中随时修改。
               </p>
               <div className="space-y-3">
+                {/* Provider Dropdown — 和设置页一致的自定义下拉 */}
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">API 提供商</label>
-                  <select
-                    className="flex h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-                    onChange={(e) => updateAi({ baseUrl: e.target.value })}
-                    value={settings.ai.baseUrl}
-                  >
-                    <option value="https://api.deepseek.com">DeepSeek</option>
-                    <option value="https://api.moonshot.cn">Moonshot (月之暗面)</option>
-                    <option value="https://api.siliconflow.cn">SiliconFlow (硅基流动)</option>
-                    <option value="custom">Custom (自定义)</option>
-                  </select>
+                  <label className="text-xs font-medium text-zinc-500">API 提供商</label>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowDropdown(!showDropdown)}
+                      className="flex w-full items-center justify-between rounded-lg bg-zinc-100 px-3 py-2.5 text-left text-sm transition-all hover:bg-zinc-200"
+                    >
+                      <span className="text-zinc-900">
+                        {currentProvider?.name || '自定义'}
+                      </span>
+                      <ChevronDown size={16} className="text-zinc-400" />
+                    </button>
+
+                    {showDropdown && (
+                      <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-auto rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
+                        {AI_PROVIDERS.map((provider) => (
+                          <button
+                            key={provider.url}
+                            onClick={() => {
+                              updateAi({ baseUrl: provider.url, model: AI_RECOMMENDED_MODELS[provider.url]?.[0] || '' })
+                              setShowDropdown(false)
+                            }}
+                            className={cn(
+                              'flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors',
+                              settings.ai.baseUrl === provider.url
+                                ? 'bg-zinc-100'
+                                : 'hover:bg-zinc-50'
+                            )}
+                          >
+                            <span className="text-zinc-900">{provider.name}</span>
+                            {settings.ai.baseUrl === provider.url && (
+                              <Check size={14} className="text-zinc-500" />
+                            )}
+                          </button>
+                        ))}
+                        <div className="my-1 border-t border-zinc-200" />
+                        <button
+                          onClick={() => setShowDropdown(false)}
+                          className="flex w-full items-center px-3 py-2 text-left text-sm text-zinc-500 hover:bg-zinc-50"
+                        >
+                          自定义 URL
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Model */}
                 <div className="space-y-1">
-                  <label className="text-xs font-medium">API Key</label>
-                  <Input
+                  <label className="text-xs font-medium text-zinc-500">模型名称</label>
+                  <ModelSelector
+                    value={settings.ai.model}
+                    onChange={(model) => updateAi({ model })}
+                    baseUrl={settings.ai.baseUrl}
+                    apiKey={settings.ai.apiKey}
+                    staticModels={AI_RECOMMENDED_MODELS[settings.ai.baseUrl]}
+                    recentModels={settings.recentModels.ai[settings.ai.baseUrl] ?? []}
+                    onModelUsed={(model) => addRecentModel('ai', settings.ai.baseUrl, model)}
+                    onRemoveRecent={(model) => removeRecentModel('ai', settings.ai.baseUrl, model)}
+                    placeholder="deepseek-chat"
+                  />
+                </div>
+
+                {/* API Key */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-zinc-500">API Key</label>
+                  <input
                     value={settings.ai.apiKey}
                     onChange={(e) => updateAi({ apiKey: e.target.value })}
                     placeholder="sk-..."
                     type="password"
+                    className="w-full rounded-lg border-0 bg-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
                   />
                 </div>
               </div>

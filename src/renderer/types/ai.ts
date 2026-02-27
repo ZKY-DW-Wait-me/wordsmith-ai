@@ -25,6 +25,18 @@ export interface ReferenceFileInput {
   uploadedAt: number
 }
 
+export interface VlmOcrConfig {
+  baseUrl: string
+  apiKey: string
+  model: string
+  systemPrompt: string
+}
+
+export interface RecentModels {
+  ai: Record<string, string[]>
+  vlm: Record<string, string[]>
+}
+
 export interface StreamChatRequest {
   mode: PromptMode
   model: AIModelConfig

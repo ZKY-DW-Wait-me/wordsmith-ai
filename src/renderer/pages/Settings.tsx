@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react'
 import {
   Globe, Palette, Bot, Wrench, Check, Loader2, X, ChevronDown, AlertTriangle,
-  CheckCircle, XCircle, FolderOpen
+  CheckCircle, XCircle, FolderOpen, Cloud, HardDrive
 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { useI18n, useLocale, useSetLocale } from '../store/useI18nStore'
 import { settingsService } from '../services/SettingsService'
+import { DEFAULT_VLM_OCR_SYSTEM_PROMPT } from '../lib/hidden-protocol'
+import { AI_PROVIDERS, VLM_PROVIDERS } from '../lib/providers'
+import { AI_RECOMMENDED_MODELS, VLM_RECOMMENDED_MODELS } from '../lib/recommended-models'
 import { toast } from '../store/useToastStore'
 import { Button } from '../components/ui/button'
+import { ModelSelector } from '../components/ui/ModelSelector'
 import { ConfirmDialog } from '../components/ui/Dialog'
 import { cn } from '../lib/cn'
 
@@ -16,16 +20,6 @@ const TABS = [
   { id: 'appearance', label: '外观', icon: Palette },
   { id: 'ai', label: 'AI 模型', icon: Bot },
   { id: 'advanced', label: '高级', icon: Wrench },
-]
-
-const AI_PROVIDERS = [
-  { url: 'https://api.deepseek.com', name: 'DeepSeek', models: ['deepseek-chat', 'deepseek-coder'] },
-  { url: 'https://api-inference.modelscope.cn/v1', name: 'ModelScope 魔搭', models: ['qwen-max', 'qwen-plus'] },
-  { url: 'https://api.siliconflow.cn', name: 'SiliconFlow 硅基流动', models: ['Qwen/Qwen2.5-72B-Instruct'] },
-  { url: 'https://open.bigmodel.cn/api/paas/v4', name: 'Zhipu 智谱清言', models: ['glm-4', 'glm-4-flash'] },
-  { url: 'https://api.moonshot.cn', name: 'Moonshot 月之暗面', models: ['moonshot-v1-8k', 'moonshot-v1-32k'] },
-  { url: 'https://ark.cn-beijing.volces.com/api/v3', name: 'ByteDance 火山引擎', models: ['doubao-pro-4k'] },
-  { url: 'https://api.minimax.chat/v1', name: 'Minimax', models: ['abab6.5-chat'] },
 ]
 
 export default function SettingsPage() {
@@ -37,6 +31,9 @@ export default function SettingsPage() {
   const updateAi = useAppStore((s) => s.updateAi)
   const updateTypography = useAppStore((s) => s.updateTypography)
   const updateSettings = useAppStore((s) => s.updateSettings)
+  const updateVlmOcr = useAppStore((s) => s.updateVlmOcr)
+  const addRecentModel = useAppStore((s) => s.addRecentModel)
+  const removeRecentModel = useAppStore((s) => s.removeRecentModel)
 
   const [activeTab, setActiveTab] = useState('general')
   const [showProviderDropdown, setShowProviderDropdown] = useState(false)
@@ -45,8 +42,11 @@ export default function SettingsPage() {
   const [resetConfirm, setResetConfirm] = useState(false)
   const [ocrStatus, setOcrStatus] = useState<OcrEngineStatus | null>(null)
   const [ocrImporting, setOcrImporting] = useState(false)
+  const [vlmTesting, setVlmTesting] = useState(false)
+  const [showVlmProviderDropdown, setShowVlmProviderDropdown] = useState(false)
 
   const currentProvider = AI_PROVIDERS.find(p => p.url === settings.ai.baseUrl)
+  const currentVlmProvider = VLM_PROVIDERS.find(p => p.url === settings.vlmOcr.baseUrl)
 
   // Fetch OCR engine status when advanced tab is active
   useEffect(() => {
@@ -65,9 +65,23 @@ export default function SettingsPage() {
     setConnectionStatus('idle')
 
     try {
-      const response = await fetch(`${settings.ai.baseUrl}/v1/models`, {
-        headers: { Authorization: `Bearer ${settings.ai.apiKey}` },
-        signal: AbortSignal.timeout(10000),
+      // 发送真实的 chat completions 请求验证 key 有效性
+      const baseUrl = settings.ai.baseUrl.replace(/\/+$/, '')
+      const url = /\/v\d+$/.test(baseUrl)
+        ? `${baseUrl}/chat/completions`
+        : `${baseUrl}/v1/chat/completions`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.ai.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: settings.ai.model || 'deepseek-chat',
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 1,
+        }),
+        signal: AbortSignal.timeout(15000),
       })
 
       if (response.ok) {
@@ -265,7 +279,7 @@ export default function SettingsPage() {
                         <button
                           key={provider.url}
                           onClick={() => {
-                            updateAi({ baseUrl: provider.url, model: provider.models[0] })
+                            updateAi({ baseUrl: provider.url, model: AI_RECOMMENDED_MODELS[provider.url]?.[0] || '' })
                             setShowProviderDropdown(false)
                             setConnectionStatus('idle')
                           }}
@@ -311,30 +325,17 @@ export default function SettingsPage() {
               {/* Model */}
               <div>
                 <label className="mb-1.5 block text-xs text-zinc-500">模型名称</label>
-                <input
+                <ModelSelector
                   value={settings.ai.model}
-                  onChange={(e) => updateAi({ model: e.target.value })}
+                  onChange={(model) => updateAi({ model })}
+                  baseUrl={settings.ai.baseUrl}
+                  apiKey={settings.ai.apiKey}
+                  staticModels={AI_RECOMMENDED_MODELS[settings.ai.baseUrl]}
+                  recentModels={settings.recentModels.ai[settings.ai.baseUrl] ?? []}
+                  onModelUsed={(model) => addRecentModel('ai', settings.ai.baseUrl, model)}
+                  onRemoveRecent={(model) => removeRecentModel('ai', settings.ai.baseUrl, model)}
                   placeholder="deepseek-chat"
-                  className="w-full rounded-lg border-0 bg-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
                 />
-                {currentProvider && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {currentProvider.models.map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => updateAi({ model: m })}
-                        className={cn(
-                          'rounded-md px-2 py-0.5 text-xs transition-colors',
-                          settings.ai.model === m
-                            ? 'bg-zinc-900 text-white'
-                            : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-                        )}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* API Key */}
@@ -411,58 +412,263 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* OCR 模式选择 */}
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <h3 className="mb-4 text-sm font-medium text-zinc-900">
-                OCR 图片识别引擎
+                {t.ocr.modeTitle}
               </h3>
-              <div className="space-y-3">
-                {/* Status */}
-                <div className="flex items-start gap-2">
-                  {ocrStatus?.installed ? (
-                    <>
-                      <CheckCircle size={16} className="mt-0.5 shrink-0 text-emerald-500" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-emerald-700">引擎已安装</p>
-                        <p className="truncate text-xs text-zinc-500">{ocrStatus.enginePath}</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle size={16} className="mt-0.5 shrink-0 text-amber-500" />
-                      <div>
-                        <p className="text-sm font-medium text-amber-700">引擎未安装</p>
-                        <p className="text-xs text-zinc-500">请导入 OCR 引擎压缩包以启用图片文字识别功能</p>
-                      </div>
-                    </>
+              <div className="grid grid-cols-2 gap-3">
+                {/* VLM 云端识别卡片 */}
+                <button
+                  onClick={() => updateSettings({ ocrMode: 'vlm' })}
+                  className={cn(
+                    'flex flex-col items-start gap-2 rounded-xl border-2 p-4 text-left transition-all',
+                    settings.ocrMode === 'vlm'
+                      ? 'border-zinc-900 bg-zinc-50'
+                      : 'border-zinc-200 hover:border-zinc-300'
                   )}
-                </div>
-
-                {/* Import button */}
-                <Button
-                  variant="outline"
-                  onClick={handleImportOcrEngine}
-                  disabled={ocrImporting}
-                  className="w-full gap-2"
                 >
-                  {ocrImporting ? (
-                    <><Loader2 size={14} className="animate-spin" /> 正在解压导入，请耐心等待...</>
-                  ) : (
-                    <><FolderOpen size={14} /> 导入 OCR 引擎压缩包 (.zip)</>
-                  )}
-                </Button>
+                  <div className="flex items-center gap-2">
+                    <Cloud size={18} className={settings.ocrMode === 'vlm' ? 'text-zinc-900' : 'text-zinc-400'} />
+                    <span className={cn('text-sm font-medium', settings.ocrMode === 'vlm' ? 'text-zinc-900' : 'text-zinc-600')}>
+                      {t.ocr.modeVlm}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500">{t.ocr.modeVlmDesc}</p>
+                </button>
 
-                {/* Instructions */}
-                <div className="rounded-lg bg-zinc-50 px-3 py-2.5 text-xs text-zinc-500">
-                  <p className="mb-1 font-medium text-zinc-600">使用说明：</p>
-                  <ol className="list-decimal space-y-0.5 pl-4">
-                    <li>下载 OCR 引擎包 (wordsmith-ocr-engine.zip，约 2.5GB)</li>
-                    <li>点击上方按钮选择下载的 zip 文件</li>
-                    <li>文件较大，解压导入需要数分钟，请耐心等待</li>
-                    <li>导入完成后即可使用图片文字识别功能</li>
-                  </ol>
-                </div>
+                {/* 本地引擎卡片 */}
+                <button
+                  onClick={() => updateSettings({ ocrMode: 'local' })}
+                  className={cn(
+                    'flex flex-col items-start gap-2 rounded-xl border-2 p-4 text-left transition-all',
+                    settings.ocrMode === 'local'
+                      ? 'border-zinc-900 bg-zinc-50'
+                      : 'border-zinc-200 hover:border-zinc-300'
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <HardDrive size={18} className={settings.ocrMode === 'local' ? 'text-zinc-900' : 'text-zinc-400'} />
+                    <span className={cn('text-sm font-medium', settings.ocrMode === 'local' ? 'text-zinc-900' : 'text-zinc-600')}>
+                      {t.ocr.modeLocal}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500">{t.ocr.modeLocalDesc}</p>
+                </button>
               </div>
             </div>
+
+            {/* VLM 配置区 */}
+            {settings.ocrMode === 'vlm' && (
+              <div className="rounded-xl border border-zinc-200 bg-white p-5">
+                <h3 className="mb-4 text-sm font-medium text-zinc-900">
+                  {t.ocr.modeVlm} - {t.ocr.vlmConfig}
+                </h3>
+                <div className="space-y-4">
+                  {/* VLM Provider Selector */}
+                  <div>
+                    <label className="mb-1.5 block text-xs text-zinc-500">{t.ocr.vlmProvider}</label>
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowVlmProviderDropdown(!showVlmProviderDropdown)}
+                        className="flex w-full items-center justify-between rounded-lg border-0 bg-zinc-100 px-3 py-2.5 text-left text-sm transition-all hover:bg-zinc-200"
+                      >
+                        <span className="text-zinc-900">
+                          {currentVlmProvider?.name || t.ocr.vlmProviderCustom}
+                        </span>
+                        <ChevronDown size={16} className="text-zinc-400" />
+                      </button>
+
+                      {showVlmProviderDropdown && (
+                        <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-auto rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
+                          {VLM_PROVIDERS.map((provider) => (
+                            <button
+                              key={provider.url}
+                              onClick={() => {
+                                updateVlmOcr({ baseUrl: provider.url, model: VLM_RECOMMENDED_MODELS[provider.url]?.[0] || '' })
+                                setShowVlmProviderDropdown(false)
+                              }}
+                              className={cn(
+                                'flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors',
+                                settings.vlmOcr.baseUrl === provider.url
+                                  ? 'bg-zinc-100'
+                                  : 'hover:bg-zinc-50'
+                              )}
+                            >
+                              <span className="text-zinc-900">{provider.name}</span>
+                              {settings.vlmOcr.baseUrl === provider.url && (
+                                <Check size={14} className="text-zinc-500" />
+                              )}
+                            </button>
+                          ))}
+                          <div className="my-1 border-t border-zinc-200" />
+                          <button
+                            onClick={() => setShowVlmProviderDropdown(false)}
+                            className="flex w-full items-center px-3 py-2 text-left text-sm text-zinc-500 hover:bg-zinc-50"
+                          >
+                            {t.ocr.vlmProviderCustom}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Base URL */}
+                  <div>
+                    <label className="mb-1.5 block text-xs text-zinc-500">{t.ocr.vlmBaseUrl}</label>
+                    <input
+                      value={settings.vlmOcr.baseUrl}
+                      onChange={(e) => updateVlmOcr({ baseUrl: e.target.value })}
+                      placeholder={t.ocr.vlmBaseUrlPlaceholder}
+                      className="w-full rounded-lg border-0 bg-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                    />
+                  </div>
+
+                  {/* Model */}
+                  <div>
+                    <label className="mb-1.5 block text-xs text-zinc-500">{t.ocr.vlmModel}</label>
+                    <ModelSelector
+                      value={settings.vlmOcr.model}
+                      onChange={(model) => updateVlmOcr({ model })}
+                      baseUrl={settings.vlmOcr.baseUrl}
+                      apiKey={settings.vlmOcr.apiKey}
+                      staticModels={VLM_RECOMMENDED_MODELS[settings.vlmOcr.baseUrl]}
+                      recentModels={settings.recentModels.vlm[settings.vlmOcr.baseUrl] ?? []}
+                      onModelUsed={(model) => addRecentModel('vlm', settings.vlmOcr.baseUrl, model)}
+                      onRemoveRecent={(model) => removeRecentModel('vlm', settings.vlmOcr.baseUrl, model)}
+                      placeholder={t.ocr.vlmModelPlaceholder}
+                    />
+                  </div>
+
+                  {/* API Key */}
+                  <div>
+                    <label className="mb-1.5 block text-xs text-zinc-500">{t.ocr.vlmApiKey}</label>
+                    <input
+                      value={settings.vlmOcr.apiKey}
+                      onChange={(e) => updateVlmOcr({ apiKey: e.target.value })}
+                      type="password"
+                      placeholder={t.ocr.vlmApiKeyPlaceholder}
+                      className="w-full rounded-lg border-0 bg-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                    />
+                  </div>
+
+                  {/* System Prompt */}
+                  <div>
+                    <label className="mb-1.5 block text-xs text-zinc-500">{t.ocr.vlmSystemPrompt}</label>
+                    <textarea
+                      value={settings.vlmOcr.systemPrompt}
+                      onChange={(e) => updateVlmOcr({ systemPrompt: e.target.value })}
+                      placeholder={DEFAULT_VLM_OCR_SYSTEM_PROMPT}
+                      rows={4}
+                      className="w-full resize-none rounded-lg border-0 bg-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                    />
+                  </div>
+
+                  {/* Test Connection */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <Button
+                      variant="outline"
+                      disabled={vlmTesting || !settings.vlmOcr.apiKey || !settings.vlmOcr.baseUrl || !settings.vlmOcr.model}
+                      onClick={async () => {
+                        setVlmTesting(true)
+                        try {
+                          // 发送真实的 chat completions 请求验证 key + model 有效性
+                          const baseUrl = settings.vlmOcr.baseUrl.replace(/\/+$/, '')
+                          const url = /\/v\d+$/.test(baseUrl)
+                            ? `${baseUrl}/chat/completions`
+                            : `${baseUrl}/v1/chat/completions`
+                          const resp = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              Authorization: `Bearer ${settings.vlmOcr.apiKey}`,
+                            },
+                            body: JSON.stringify({
+                              model: settings.vlmOcr.model,
+                              messages: [{ role: 'user', content: 'hi' }],
+                              max_tokens: 1,
+                            }),
+                            signal: AbortSignal.timeout(15000),
+                          })
+                          if (resp.ok) {
+                            toast({ title: t.ocr.vlmTestSuccess, variant: 'success' })
+                          } else {
+                            const text = await resp.text().catch(() => '')
+                            let detail = `HTTP ${resp.status}`
+                            try { detail = JSON.parse(text)?.error?.message || detail } catch { /* ignore */ }
+                            toast({ title: t.ocr.vlmTestFail, description: detail, variant: 'destructive' })
+                          }
+                        } catch {
+                          toast({ title: t.ocr.vlmTestFail, description: '请检查网络或 API 配置', variant: 'destructive' })
+                        } finally {
+                          setVlmTesting(false)
+                        }
+                      }}
+                      className="gap-2"
+                    >
+                      {vlmTesting && <Loader2 size={14} className="animate-spin" />}
+                      {t.ocr.vlmTestConnection}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 本地引擎区 */}
+            {settings.ocrMode === 'local' && (
+              <div className="rounded-xl border border-zinc-200 bg-white p-5">
+                <h3 className="mb-4 text-sm font-medium text-zinc-900">
+                  {t.ocr.modeLocal}
+                </h3>
+                <div className="space-y-3">
+                  {/* Status */}
+                  <div className="flex items-start gap-2">
+                    {ocrStatus?.installed ? (
+                      <>
+                        <CheckCircle size={16} className="mt-0.5 shrink-0 text-emerald-500" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-emerald-700">{t.ocr.localEngineInstalled}</p>
+                          <p className="truncate text-xs text-zinc-500">{ocrStatus.enginePath}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle size={16} className="mt-0.5 shrink-0 text-amber-500" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-700">{t.ocr.localEngineNotInstalled}</p>
+                          <p className="text-xs text-zinc-500">{t.ocr.localEngineNotInstalledDesc}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Import button */}
+                  <Button
+                    variant="outline"
+                    onClick={handleImportOcrEngine}
+                    disabled={ocrImporting}
+                    className="w-full gap-2"
+                  >
+                    {ocrImporting ? (
+                      <><Loader2 size={14} className="animate-spin" /> {t.ocr.localImporting}</>
+                    ) : (
+                      <><FolderOpen size={14} /> {t.ocr.localImportBtn}</>
+                    )}
+                  </Button>
+
+                  {/* Instructions */}
+                  <div className="rounded-lg bg-zinc-50 px-3 py-2.5 text-xs text-zinc-500">
+                    <p className="mb-1 font-medium text-zinc-600">{t.ocr.localInstructions}</p>
+                    <ol className="list-decimal space-y-0.5 pl-4">
+                      <li>{t.ocr.localStep1}</li>
+                      <li>{t.ocr.localStep2}</li>
+                      <li>{t.ocr.localStep3}</li>
+                      <li>{t.ocr.localStep4}</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-xl border border-zinc-200 bg-white p-5">
               <h3 className="mb-4 text-sm font-medium text-zinc-900">

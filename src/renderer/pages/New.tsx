@@ -3,7 +3,7 @@ import {
   FileText, Upload, X, Copy, Code, RefreshCw,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
   Sparkles, ArrowRight, Maximize2, ExternalLink, AlertCircle, FileCode2,
-  Loader2
+  Loader2, Pencil
 } from 'lucide-react'
 import { guardHtml } from '../lib/protocol-guard'
 import { getTemplateById } from '../lib/templates'
@@ -20,6 +20,7 @@ export default function NewPage() {
   const setCustomInstruction = useAppStore((s) => s.setCustomInstruction)
   const referenceFiles = useAppStore((s) => s.referenceFiles)
   const addReferenceFile = useAppStore((s) => s.addReferenceFile)
+  const updateReferenceFile = useAppStore((s) => s.updateReferenceFile)
   const removeReferenceFile = useAppStore((s) => s.removeReferenceFile)
 
   // 使用全局工作区状态
@@ -35,6 +36,7 @@ export default function NewPage() {
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [showVbaMacro, setShowVbaMacro] = useState(false)
   const [ocrLoading, setOcrLoading] = useState(false)
+  const [editingFile, setEditingFile] = useState<{ id: string; name: string; content: string } | null>(null)
 
   // Panel collapse states
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -75,11 +77,29 @@ export default function NewPage() {
           toast({ title: 'OCR 不可用', description: 'OCR 功能未就绪，请检查嵌入式 Python 环境。', variant: 'destructive' })
           continue
         }
+        // VLM 模式下，前端先校验配置是否完整，避免无意义请求
+        const vlmConfig = settings.ocrMode === 'vlm' ? settings.vlmOcr : null
+        if (settings.ocrMode === 'vlm' && (!vlmConfig?.baseUrl || !vlmConfig?.apiKey || !vlmConfig?.model)) {
+          toast({
+            title: 'VLM 未配置',
+            description: '请前往「设置 → 高级」配置 VLM 视觉模型的 API 地址、模型名和 API Key 后再试。',
+            variant: 'warning',
+            duration: 8000,
+          })
+          continue
+        }
         setOcrLoading(true)
         try {
-          const result = await window.wordsmith.ocr.recognize(filePath)
+          const result = await window.wordsmith.ocr.recognize(filePath, vlmConfig)
           if (result.success) {
             addReferenceFile({ name: `[OCR] ${file.name}`, content: result.markdown })
+          } else if (result.error === 'VLM_NOT_CONFIGURED') {
+            toast({
+              title: 'VLM 未配置',
+              description: '请前往「设置 → 高级」配置 VLM 视觉模型的 API 信息后再试。',
+              variant: 'warning',
+              duration: 8000,
+            })
           } else if (result.error === 'OCR_ENGINE_NOT_INSTALLED') {
             toast({
               title: 'OCR 引擎未安装',
@@ -241,9 +261,20 @@ export default function NewPage() {
                       className="group flex items-center gap-2 rounded-lg bg-zinc-100/80 px-2.5 py-2"
                     >
                       <FileText size={12} className="shrink-0 text-zinc-400" />
-                      <span className="flex-1 truncate text-xs text-zinc-600">
+                      <button
+                        onClick={() => setEditingFile({ id: file.id, name: file.name, content: file.content })}
+                        className="flex-1 truncate text-left text-xs text-zinc-600 hover:text-zinc-900 hover:underline"
+                        title="点击编辑内容"
+                      >
                         {file.name}
-                      </span>
+                      </button>
+                      <button
+                        onClick={() => setEditingFile({ id: file.id, name: file.name, content: file.content })}
+                        className="shrink-0 rounded p-0.5 text-zinc-400 opacity-0 transition-all hover:bg-zinc-200 hover:text-zinc-600 group-hover:opacity-100"
+                        title="编辑"
+                      >
+                        <Pencil size={10} />
+                      </button>
                       <button
                         onClick={() => removeReferenceFile(file.id)}
                         className="shrink-0 rounded p-0.5 text-zinc-400 opacity-0 transition-all hover:bg-zinc-200 hover:text-zinc-600 group-hover:opacity-100"
@@ -492,6 +523,38 @@ export default function NewPage() {
 
       {/* VBA Macro Helper Dialog */}
       <VbaMacroDialog open={showVbaMacro} onClose={() => setShowVbaMacro(false)} />
+
+      {/* 参考文件编辑弹窗 */}
+      {editingFile && (
+        <Dialog open onClose={() => setEditingFile(null)} className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="truncate text-sm">{editingFile.name}</DialogTitle>
+            <DialogClose onClose={() => setEditingFile(null)} />
+          </DialogHeader>
+          <DialogContent className="flex max-h-[60vh] flex-col">
+            <textarea
+              value={editingFile.content}
+              onChange={(e) => setEditingFile({ ...editingFile, content: e.target.value })}
+              className="min-h-[300px] flex-1 resize-none rounded-lg border border-zinc-200 bg-zinc-50 p-3 font-mono text-sm leading-relaxed text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300"
+              spellCheck={false}
+            />
+          </DialogContent>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditingFile(null)}>
+              取消
+            </Button>
+            <Button
+              onClick={() => {
+                updateReferenceFile(editingFile.id, editingFile.content)
+                setEditingFile(null)
+                toast({ title: '已保存修改', variant: 'success' })
+              }}
+            >
+              保存
+            </Button>
+          </DialogFooter>
+        </Dialog>
+      )}
     </div>
   )
 }

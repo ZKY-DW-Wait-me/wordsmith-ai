@@ -4,6 +4,7 @@ import path from 'node:path'
 import { mkdir, rm, rename, readdir } from 'node:fs/promises'
 import extract from 'extract-zip'
 import { CpuOcrProvider, type OcrResult, type OcrEngineStatus } from './ocr-provider'
+import { VlmProvider, type VlmOcrConfig } from './vlm-provider'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -74,14 +75,40 @@ ipcMain.handle('clipboard:write', async (_event, payload: { html: string; text: 
   })
 })
 
+// Models fetch IPC — 在主进程发起 HTTP 请求，绕过渲染进程 CORS 限制
+ipcMain.handle('models:fetch', async (_event, url: string, apiKey: string): Promise<{ ok: boolean; status?: number; body?: string; error?: string }> => {
+  try {
+    const headers: Record<string, string> = {}
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      signal: AbortSignal.timeout(15000),
+    })
+    const body = await response.text()
+    console.log(`[Models] GET ${url} → ${response.status} (${body.length} bytes)`)
+    return { ok: response.ok, status: response.status, body }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    console.error(`[Models] GET ${url} FAILED: ${msg}`)
+    return { ok: false, error: msg }
+  }
+})
+
 // OCR IPC
 const ocrProvider = new CpuOcrProvider()
+const vlmProvider = new VlmProvider()
 
-ipcMain.handle('ocr:recognize', async (_event, imagePath: string): Promise<OcrResult> => {
+ipcMain.handle('ocr:recognize', async (_event, imagePath: string, vlmConfig?: VlmOcrConfig | null): Promise<OcrResult> => {
   try {
     if (!imagePath || typeof imagePath !== 'string') {
       return { success: false, markdown: '', error: 'Invalid image path.' }
     }
+    // VLM 优先：配置有效时使用 VLM API
+    if (vlmConfig && vlmConfig.apiKey && vlmConfig.baseUrl && vlmConfig.model) {
+      return await vlmProvider.recognize(imagePath, vlmConfig)
+    }
+    // 兜底：使用本地 OCR 引擎
     return await ocrProvider.recognize(imagePath)
   } catch (err) {
     return { success: false, markdown: '', error: err instanceof Error ? err.message : 'Unknown error' }
@@ -107,9 +134,12 @@ ipcMain.handle('ocr:selectZipFile', async (): Promise<string | null> => {
 })
 
 ipcMain.handle('ocr:importEngineZip', async (_event, zipPath: string): Promise<{ success: boolean; enginePath?: string; error?: string }> => {
-  const userDataPath = app.getPath('userData')
-  const tempDir = path.join(userDataPath, 'ocr_engine_temp')
-  const finalDir = path.join(userDataPath, 'ocr_engine')
+  // OCR 引擎存放在安装目录下，而不是 C 盘 AppData
+  const appDir = VITE_DEV_SERVER_URL
+    ? process.env.APP_ROOT               // 开发模式：项目根目录
+    : path.dirname(app.getPath('exe'))    // 生产模式：exe 所在目录
+  const tempDir = path.join(appDir, 'ocr_engine_temp')
+  const finalDir = path.join(appDir, 'ocr_engine')
 
   try {
     // 1. Clean up any previous temp directory

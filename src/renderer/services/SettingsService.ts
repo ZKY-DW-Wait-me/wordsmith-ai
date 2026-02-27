@@ -35,8 +35,9 @@ export class SettingsService {
     })
     store.setTemplateId('default')
 
-    // 2. 重置高级设置 (如果有)
-    // store.updateAdvanced(...)
+    // 2. 重置 OCR 设置
+    store.updateSettings({ ocrMode: 'vlm' })
+    store.updateVlmOcr({ baseUrl: '', apiKey: '', model: '', systemPrompt: '' })
   }
 
   /**
@@ -49,6 +50,10 @@ export class SettingsService {
       ai: {
         ...settings.ai,
         apiKey: settings.ai.apiKey ? '******' : '',
+      },
+      vlmOcr: {
+        ...settings.vlmOcr,
+        apiKey: settings.vlmOcr.apiKey ? '******' : '',
       },
     }
     return JSON.stringify(safeSettings, null, 2)

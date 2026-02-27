@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { AIModelConfig, ChatMessage, PromptMode } from '../types/ai'
+import type { AIModelConfig, ChatMessage, PromptMode, RecentModels, VlmOcrConfig } from '../types/ai'
 import type { ReferenceFile } from '../lib/hidden-protocol'
 import type { GuardReport } from '../types/guard'
 
@@ -59,6 +59,10 @@ export interface AppSettings {
   eyeCareMode: boolean
   savePath: string
   ocrEnginePath: string | null
+  ocrMode: 'vlm' | 'local'
+  vlmOcr: VlmOcrConfig
+  recentModels: RecentModels
+  providerApiKeys: Record<string, string>
 }
 
 /**
@@ -73,8 +77,11 @@ export interface AppState {
 
   updateAi: (partial: Partial<AIModelConfig>) => void
   updateTypography: (partial: Partial<AIDefaultTypography>) => void
+  updateVlmOcr: (partial: Partial<VlmOcrConfig>) => void
   setTemplateId: (id: string) => void
   updateSettings: (partial: Partial<AppSettings>) => void
+  addRecentModel: (context: 'ai' | 'vlm', baseUrl: string, model: string) => void
+  removeRecentModel: (context: 'ai' | 'vlm', baseUrl: string, model: string) => void
 
   addHistoryItem: (item: Omit<HistoryItem, 'id' | 'createdAt'>) => string
   updateHistoryItem: (id: string, partial: Partial<Omit<HistoryItem, 'id' | 'createdAt'>>) => void
@@ -83,6 +90,7 @@ export interface AppState {
 
   setCustomInstruction: (instruction: string) => void
   addReferenceFile: (file: Omit<ReferenceFile, 'id' | 'uploadedAt'>) => void
+  updateReferenceFile: (id: string, content: string) => void
   removeReferenceFile: (id: string) => void
   clearReferenceFiles: () => void
 
@@ -126,17 +134,105 @@ export const useAppStore = create<AppState>()(
         eyeCareMode: false,
         savePath: 'My Documents/WordSmith',
         ocrEnginePath: null,
+        ocrMode: 'vlm',
+        vlmOcr: { baseUrl: '', apiKey: '', model: '', systemPrompt: '' },
+        recentModels: { ai: {}, vlm: {} },
+        providerApiKeys: {},
       },
       history: [],
       customInstruction: '',
       referenceFiles: [],
       workspace: defaultWorkspace,
 
-      updateAi: (partial) => set((s) => ({ settings: { ...s.settings, ai: { ...s.settings.ai, ...partial } } })),
+      updateAi: (partial) =>
+        set((s) => {
+          const current = s.settings.ai
+          const newKeys = { ...s.settings.providerApiKeys }
+          const merged = { ...partial }
+
+          // 切换提供商时：保存当前 key，恢复目标提供商的 key
+          if (merged.baseUrl && merged.baseUrl !== current.baseUrl) {
+            newKeys[current.baseUrl] = current.apiKey
+            if (!('apiKey' in merged)) {
+              merged.apiKey = newKeys[merged.baseUrl] || ''
+            }
+          }
+
+          // apiKey 变化时，存入 providerApiKeys
+          if ('apiKey' in merged) {
+            const targetUrl = merged.baseUrl || current.baseUrl
+            newKeys[targetUrl] = merged.apiKey || ''
+          }
+
+          return {
+            settings: {
+              ...s.settings,
+              ai: { ...current, ...merged },
+              providerApiKeys: newKeys,
+            },
+          }
+        }),
       updateTypography: (partial) =>
         set((s) => ({ settings: { ...s.settings, typography: { ...s.settings.typography, ...partial } } })),
+      updateVlmOcr: (partial) =>
+        set((s) => {
+          const current = s.settings.vlmOcr
+          const newKeys = { ...s.settings.providerApiKeys }
+          const merged = { ...partial }
+
+          // 切换 VLM 提供商时：保存当前 key，恢复目标提供商的 key
+          if (merged.baseUrl && merged.baseUrl !== current.baseUrl) {
+            newKeys[current.baseUrl] = current.apiKey
+            if (!('apiKey' in merged)) {
+              merged.apiKey = newKeys[merged.baseUrl] || ''
+            }
+          }
+
+          if ('apiKey' in merged) {
+            const targetUrl = merged.baseUrl || current.baseUrl
+            newKeys[targetUrl] = merged.apiKey || ''
+          }
+
+          return {
+            settings: {
+              ...s.settings,
+              vlmOcr: { ...current, ...merged },
+              providerApiKeys: newKeys,
+            },
+          }
+        }),
       setTemplateId: (id) => set((s) => ({ settings: { ...s.settings, templateId: id } })),
       updateSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
+      addRecentModel: (context, baseUrl, model) =>
+        set((s) => {
+          const bucket = s.settings.recentModels[context]
+          const list = bucket[baseUrl] || []
+          const updated = [model, ...list.filter((m) => m !== model)].slice(0, 5)
+          return {
+            settings: {
+              ...s.settings,
+              recentModels: {
+                ...s.settings.recentModels,
+                [context]: { ...bucket, [baseUrl]: updated },
+              },
+            },
+          }
+        }),
+      removeRecentModel: (context, baseUrl, model) =>
+        set((s) => {
+          const bucket = s.settings.recentModels[context]
+          const list = bucket[baseUrl] || []
+          const updated = list.filter((m) => m !== model)
+          return {
+            settings: {
+              ...s.settings,
+              recentModels: {
+                ...s.settings.recentModels,
+                [context]: { ...bucket, [baseUrl]: updated },
+              },
+            },
+          }
+        }),
 
       addHistoryItem: (item) => {
         const id = uid('history')
@@ -165,6 +261,12 @@ export const useAppStore = create<AppState>()(
             ...s.referenceFiles,
             { ...file, id: uid('ref'), uploadedAt: Date.now() },
           ].slice(0, 10),
+        })),
+      updateReferenceFile: (id, content) =>
+        set((s) => ({
+          referenceFiles: s.referenceFiles.map((f) =>
+            f.id === id ? { ...f, content } : f
+          ),
         })),
       removeReferenceFile: (id) => set((s) => ({ referenceFiles: s.referenceFiles.filter((f) => f.id !== id) })),
       clearReferenceFiles: () => set({ referenceFiles: [] }),
@@ -205,6 +307,36 @@ export const useAppStore = create<AppState>()(
         referenceFiles: state.referenceFiles,
         workspace: state.workspace,
       }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<AppState>
+        const merged = { ...current, ...p }
+        // 深合并 settings，确保老用户升级后新增字段有默认值
+        if (p.settings) {
+          merged.settings = {
+            ...(current as AppState).settings,
+            ...p.settings,
+            vlmOcr: {
+              ...(current as AppState).settings.vlmOcr,
+              ...(p.settings.vlmOcr || {}),
+            },
+            recentModels: {
+              ...(current as AppState).settings.recentModels,
+              ...( // 兼容老格式：如果 persisted 是数组就丢弃，只接受对象
+                p.settings.recentModels &&
+                typeof p.settings.recentModels.ai === 'object' &&
+                !Array.isArray(p.settings.recentModels.ai)
+                  ? p.settings.recentModels
+                  : {}
+              ),
+            },
+            providerApiKeys: {
+              ...(current as AppState).settings.providerApiKeys,
+              ...(p.settings.providerApiKeys || {}),
+            },
+          }
+        }
+        return merged as AppState
+      },
     },
   ),
 )
