@@ -1,4 +1,20 @@
  [简体中文](README.md) | [English](README.en-US.md)
+ ## 📄 开源协议 (License)
+本项目采用 [GPL v3](LICENSE) 协议开源。
+> 
+⚖️开源协议与版权声明(License&Copyright)
+本项目（包括但不限于源代码、文档、资源文件等）的著作权归原作者（本人）所有。
+授权协议说明：
+1. 
+统一授权： 本项目自 首个 Commit (Initial Commit) 起的所有历史版本、分支及后续更新，现统一采用 GNU General Public License v3.0 (GPLv3) 协议进行授权。
+2. 
+溯及力声明： 无论您是在本项目添加 LICENSE 文件之前还是之后获取的源代码，只要您分发、修改或使用本项目代码，均须严格遵守 GPLv3 协议的所有条款。
+3. 
+闭源限制： 严禁任何个人或机构在未履行 GPLv3 义务（如开源衍生项目源码）的情况下，将本项目代码用于商业闭源软件、打包为 .exe 或其他二进制形式进行分发。
+4. 
+侵权追究： 任何违反 GPLv3 协议的行为均视为对著作权的直接侵权。本人保留通过法律途径（包括但不限于向托管平台提交 DMCA/侵权申诉、提起司法诉讼等）追究侵权者法律责任的权利。
+提示： 如果您希望在不遵守 GPLv3 协议（如保持闭源）的情况下使用本项目代码，请务必联系作者获得额外的商业授权。
+
 # WordSmith AI（智排精灵）
 > 基于HTML的word排版工具
 
@@ -51,5 +67,5 @@ npm run build
 
 打包 OCR 引擎 zip：`powershell -ExecutionPolicy Bypass -File scripts/pack-ocr-engine.ps1`
 
-## 📄 开源协议 (License)
-本项目采用 [GPL v3](LICENSE) 协议开源。
+## 📄 开源协议
+本项目采用 [GPL v3 协议](LICENSE) 开源。

@@ -1,4 +1,23 @@
  [简体中文](README.md) | [English](README.en-US.md)
+ ## 📄 Open Source License  
+This project is open-sourced under the [GPL v3](LICENSE) license.  
+>   
+
+⚖️ License & Copyright  
+The copyright of this project (including but not limited to source code, documentation, resource files, etc.) is owned by the original author (myself).  
+
+License Terms:  
+
+1. **Unified Authorization**: All historical versions, branches, and subsequent updates of this project, starting from the first commit (Initial Commit), are now uniformly authorized under the GNU General Public License v3.0 (GPLv3).  
+
+2. **Retroactive Effect Declaration**: Regardless of whether you obtained the source code before or after the addition of the LICENSE file to this project, any distribution, modification, or use of this project's code must strictly comply with all terms of the GPLv3 license.  
+
+3. **Closed-Source Restriction**: No individual or organization is permitted to use this project's code for commercial closed-source software, package it into .exe or other binary forms for distribution, without fulfilling the obligations of the GPLv3 (such as open-sourcing the derivative project's source code).  
+
+4. **Infringement Action**: Any violation of the GPLv3 license shall be deemed as direct infringement of copyright. I reserve the right to pursue legal action (including but not limited to submitting DMCA/takedown requests to hosting platforms, filing judicial lawsuits, etc.) against infringers.  
+
+Notice: If you wish to use this project's code without complying with the GPLv3 license (e.g., keeping it closed-source), you must contact the author to obtain a separate commercial license.
+
 # WordSmith AI (Smart Formatting Wizard)
 > A Word formatting tool based on HTML
 
