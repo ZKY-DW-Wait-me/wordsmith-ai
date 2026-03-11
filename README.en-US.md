@@ -10,11 +10,22 @@ This project is open-sourced under the [GPL v3](LICENSE) license.
 ## 📱 User Guide
 
 ### 🎯 Program Introduction
-WordSmith AI is a convenient formatting tool that leverages HTML format and strict prompt constraints to interact with AI for article paragraph formatting, which can then be copied and pasted back into Word. It also supports rendering mathematical and physical formulas. The tool allows AI to directly generate articles, format content by imitating existing paragraphs from Word documents, and clean HTML content copied from web pages to precisely comply with Word's formatting capabilities. The **latest version** now supports OCR functionality.You can choose between **local inference** and **cloud inference** modes, and the recognition results support manual secondary correction. Users can directly upload or drag-and-drop images for text and formula recognition.
+WordSmith AI is a convenient formatting tool that leverages HTML format and strict prompt constraints to interact with AI for article paragraph formatting, which can then be copied and pasted back into Word. It also supports rendering mathematical and physical formulas. The tool allows AI to directly generate articles, format content by imitating existing paragraphs from Word documents, and clean HTML content copied from web pages to precisely comply with Word's formatting capabilities. The latest version supports OCR image recognition with two modes:
+
+- **Local OCR (Recommended)**: GPU-accelerated pipeline based on ONNX Runtime + DirectML, supporting layout analysis, text detection and recognition, outputting Markdown-formatted text. Works with all GPU vendors (NVIDIA / AMD / Intel), no internet required.
+- **Cloud OCR**: Online inference via VLM (Vision Language Model), requires API Key from a service provider and selecting a vision model.
+
+Recognition results support manual correction. Users can directly upload or drag-and-drop images for text recognition.
 
 ### 📥 Installation Instructions
-1. Download the latest version of the .exe file (Current latest: v1.1.1).
-2. **Note**: For the OCR function, you need to manually select and import a zip package or fill in the API key of the corresponding service provider in "Settings - Advanced - OCR Image Recognition", and perform recognition by selecting the corresponding vision model.
+1. Download the latest version of the .exe installer (Current latest: **v1.1.2**).
+2. **OCR functionality** requires additional engine packages, configured in "Settings → Advanced → OCR Image Recognition":
+   - **Local OCR**: Import `wordsmith-ocr-engine.zip` (OCR engine, ~1.8GB) and `wordsmith-gpu-pack.zip` (GPU acceleration pack, ~317MB). DirectML GPU acceleration is enabled automatically after import; falls back to CPU when no GPU is available.
+   - **Cloud OCR**: Enter the API Key from your service provider and select a vision model.
+
+<p align="center">
+  <img src="assets/ocr-gpu-settings.png" width="700" alt="OCR & GPU Acceleration Settings" />
+</p>
 
 ---
 
@@ -45,9 +56,24 @@ Core Constraints — Ensure HTML pasted into Word has correct formatting:
 - Mathematical formulas retain `$...$` / `$$...$$` as-is, MathML is removed
 
 ### OCR Engine
-Not included in the installation package (≈ 2.5GB). Users import the zip via "Settings → Advanced". During development, place the `ocr_engine/` directory in the project root for automatic detection.
+The OCR engine is not included in the installer. Users import it via "Settings → Advanced".
 
-Package OCR engine to zip: `powershell -ExecutionPolicy Bypass -File scripts/pack-ocr-engine.ps1`
+**Local OCR Pipeline (v1.1.2)**:
+- Based on 3 ONNX models: layout analysis (PP-DocLayout) + text detection (PP-OCRv5 det) + text recognition (PP-OCRv5 rec)
+- GPU acceleration: ONNX Runtime + DirectML, supports NVIDIA / AMD / Intel GPUs
+- ~1.8–2.4s per image (GPU), auto-fallback to CPU when no GPU is available
+- Core script: `ocr_engine/onnx_pipeline.py`, called from TypeScript via `execFile`
+
+**Distribution package build**:
+```powershell
+# OCR engine pack (~1.8GB)
+powershell -ExecutionPolicy Bypass -File scripts/pack-ocr-engine.ps1
+
+# GPU acceleration pack (~317MB)
+pwsh scripts/prepare-gpu-pack.ps1
+```
+
+During development, place the `ocr_engine/` directory in the project root for automatic detection. See `docs/OCR模块技术文档.md` for technical details.
 
 ## 📄 Open Source License (License)
 This project is licensed under the [GPL v3 License](LICENSE).

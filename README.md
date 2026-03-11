@@ -10,12 +10,23 @@
 ## 📱 给用户的使用指南 (User Guide)
 
 ### 🎯 程序介绍
-WordSmith AI 是利用HTML格式，通过严格提示词限制，与AI对话，进行文章段落排版，并复制粘贴回word中的便捷排版工具，同时支持数学物理公式渲染。既可以让AI直接生成文章，也可以根据word原有文章段落进行仿照排版，同时也支持对网页HTML复制的HTML格式进行清洗，精确符合word排版功能。最新版本已支持OCR，可以选择本地推理和云端推理两种模式，且识别结果支持手动二次更正。用户可以直接上传，拖拽图片进行文本，公式识别。
+WordSmith AI 是利用HTML格式，通过严格提示词限制，与AI对话，进行文章段落排版，并复制粘贴回word中的便捷排版工具，同时支持数学物理公式渲染。既可以让AI直接生成文章，也可以根据word原有文章段落进行仿照排版，同时也支持对网页HTML复制的HTML格式进行清洗，精确符合word排版功能。最新版本已支持OCR图片识别，提供两种模式：
+
+- **本地 OCR（推荐）**：基于 ONNX Runtime + DirectML 的 GPU 加速流水线，支持版面分析、文字检测与识别，输出 Markdown 格式文本。全平台 GPU 通用（NVIDIA / AMD / Intel），无需联网。
+- **云端 OCR**：通过 VLM 视觉语言模型在线推理，需填写服务商 API Key 并选择对应视觉模型。
+
+识别结果支持手动二次更正，用户可直接上传或拖拽图片进行文本识别。
 
 
 ### 📥 如何安装
-1.  下载最新版本的 `.exe` 文件（当前最新：**v1.1.1**）。
-3.  **注意**：OCR功能需在“设置-高级-OCR 图片识别”中手动选择 zip 包进行导入或者填写对应服务商的APIkey，通过选择对应视觉模型进行识别。
+1.  下载最新版本的 `.exe` 安装包（当前最新：**v1.1.2**）。
+2.  **OCR 功能**需额外导入引擎包，在「设置 → 高级 → OCR 图片识别」中操作：
+    - **本地 OCR**：依次导入 `wordsmith-ocr-engine.zip`（OCR 引擎，约 1.8GB）和 `wordsmith-gpu-pack.zip`（GPU 加速包，约 317MB）。导入后自动启用 DirectML GPU 加速，无 GPU 时自动回退 CPU。
+    - **云端 OCR**：填写对应服务商的 API Key，选择视觉模型即可使用。
+
+<p align="center">
+  <img src="assets/ocr-gpu-settings.png" width="700" alt="OCR 与 GPU 加速设置界面" />
+</p>
 
 
 ---
@@ -50,9 +61,24 @@ npm run build
 
 ### OCR 引擎
 
-不含在安装包中（约 2.5GB），用户通过「设置 → 高级」导入 zip。开发时将 `ocr_engine/` 放项目根目录即可自动检测。
+OCR 引擎不含在安装包中，用户通过「设置 → 高级」导入。
 
-打包 OCR 引擎 zip：`powershell -ExecutionPolicy Bypass -File scripts/pack-ocr-engine.ps1`
+**本地 OCR 流水线（v1.1.2）**：
+- 基于 3 个 ONNX 模型：版面分析（PP-DocLayout）+ 文字检测（PP-OCRv5 det）+ 文字识别（PP-OCRv5 rec）
+- GPU 加速：ONNX Runtime + DirectML，支持 NVIDIA / AMD / Intel 全平台显卡
+- 单图耗时约 1.8 ~ 2.4 秒（GPU），无 GPU 自动回退 CPU
+- 核心脚本：`ocr_engine/onnx_pipeline.py`，TypeScript 端通过 `execFile` 调用
+
+**分发包构建**：
+```powershell
+# OCR 引擎包（~1.8GB）
+powershell -ExecutionPolicy Bypass -File scripts/pack-ocr-engine.ps1
+
+# GPU 加速包（~317MB）
+pwsh scripts/prepare-gpu-pack.ps1
+```
+
+开发时将 `ocr_engine/` 放项目根目录即可自动检测。技术细节见 `docs/OCR模块技术文档.md`。
 
 ## 📄 开源协议
 本项目采用 [GPL v3 协议](LICENSE) 开源。
