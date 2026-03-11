@@ -55,6 +55,27 @@ if (Test-Path $ocrCli) {
     Copy-Item $ocrCli (Join-Path $destEngine "ocr_cli.py")
 }
 
+# Copy onnx_engine.py (ONNX 推理入口脚本)
+$onnxEngine = Join-Path $sourceDir "onnx_engine.py"
+if (Test-Path $onnxEngine) {
+    Write-Host "Copying onnx_engine.py..."
+    Copy-Item $onnxEngine (Join-Path $destEngine "onnx_engine.py")
+}
+
+# Copy hw_accel.py (硬件加速检测脚本)
+$hwAccel = Join-Path $sourceDir "hw_accel.py"
+if (Test-Path $hwAccel) {
+    Write-Host "Copying hw_accel.py..."
+    Copy-Item $hwAccel (Join-Path $destEngine "hw_accel.py")
+}
+
+# Copy onnx_pipeline.py (模块化 ONNX OCR 流水线脚本)
+$onnxPipeline = Join-Path $sourceDir "onnx_pipeline.py"
+if (Test-Path $onnxPipeline) {
+    Write-Host "Copying onnx_pipeline.py..."
+    Copy-Item $onnxPipeline (Join-Path $destEngine "onnx_pipeline.py")
+}
+
 # Copy requirements.txt if exists
 $requirements = Join-Path $sourceDir "requirements.txt"
 if (Test-Path $requirements) {

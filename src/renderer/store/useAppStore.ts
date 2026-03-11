@@ -63,6 +63,7 @@ export interface AppSettings {
   vlmOcr: VlmOcrConfig
   recentModels: RecentModels
   providerApiKeys: Record<string, string>
+  acceleratorPath: string | null
 }
 
 /**
@@ -138,6 +139,7 @@ export const useAppStore = create<AppState>()(
         vlmOcr: { baseUrl: '', apiKey: '', model: '', systemPrompt: '' },
         recentModels: { ai: {}, vlm: {} },
         providerApiKeys: {},
+        acceleratorPath: null,
       },
       history: [],
       customInstruction: '',

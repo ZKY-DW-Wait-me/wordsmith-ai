@@ -30,6 +30,42 @@ contextBridge.exposeInMainWorld('wordsmith', {
       return ipcRenderer.invoke('ocr:importEngineZip', zipFilePath)
     },
   },
+  accel: {
+    getStatus() {
+      return ipcRenderer.invoke('accel:getStatus')
+    },
+    checkDx12() {
+      return ipcRenderer.invoke('accel:checkDx12')
+    },
+    selectZipFile() {
+      return ipcRenderer.invoke('accel:selectZipFile')
+    },
+    importPatchZip(zipFilePath: string) {
+      return ipcRenderer.invoke('accel:importPatchZip', zipFilePath)
+    },
+    setPath(enginePath: string | null) {
+      return ipcRenderer.invoke('accel:setPath', enginePath)
+    },
+    getOnnxModelStatus() {
+      return ipcRenderer.invoke('onnx:getModelStatus')
+    },
+    selectOnnxZipFile() {
+      return ipcRenderer.invoke('onnx:selectZipFile')
+    },
+    importOnnxModelZip(zipFilePath: string) {
+      return ipcRenderer.invoke('onnx:importModelZip', zipFilePath)
+    },
+    // GPU 加速包一键导入（合并 DLL + ONNX 模型）
+    getGpuStatus() {
+      return ipcRenderer.invoke('gpu:getStatus')
+    },
+    selectGpuZipFile() {
+      return ipcRenderer.invoke('gpu:selectZipFile')
+    },
+    importGpuPack(zipFilePath: string) {
+      return ipcRenderer.invoke('gpu:importPack', zipFilePath)
+    },
+  },
   window: {
     minimize() {
       ipcRenderer.send('window:minimize')

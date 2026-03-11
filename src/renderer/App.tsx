@@ -28,6 +28,14 @@ function App() {
     }
   }, [ocrEnginePath])
 
+  useEffect(() => {
+    // accel:setPath 设置 accelManager 的 enginePath（用于查找 accelerator/ 目录和运行 hw_accel.py）
+    // 必须传 ocrEnginePath（OCR 引擎根路径），而非 acceleratorPath
+    if (window.wordsmith?.accel?.setPath) {
+      window.wordsmith.accel.setPath(ocrEnginePath)
+    }
+  }, [ocrEnginePath])
+
   return (
     <div className="flex h-full w-full bg-zinc-50">
       <OnboardingModal />

@@ -29,6 +29,33 @@ interface OcrEngineStatus {
   missingModels: string[]
 }
 
+interface AcceleratorStatus {
+  acceleratorInstalled: boolean
+  patchLoaded: boolean
+  dx12Supported: boolean
+  adapterName: string | null
+  activeProvider: 'DML' | 'CPU'
+  acceleratorPath: string | null
+  error: string | null
+}
+
+interface OnnxModelStatus {
+  installed: boolean
+  modelPath: string | null
+  missingFiles: string[]
+}
+
+interface GpuPackStatus {
+  acceleratorInstalled: boolean
+  onnxModelInstalled: boolean
+  ready: boolean
+  adapterName: string | null
+  activeProvider: 'DML' | 'CPU'
+  missingDlls: string[]
+  missingOnnxFiles: string[]
+  error: string | null
+}
+
 interface Window {
   wordsmith?: {
     clipboard: {
@@ -59,6 +86,34 @@ interface Window {
       importEngineZip: (zipFilePath: string) => Promise<{
         success: boolean
         enginePath?: string
+        error?: string
+      }>
+    }
+    accel: {
+      getStatus: () => Promise<AcceleratorStatus>
+      checkDx12: () => Promise<{
+        supported: boolean
+        adapter: string | null
+        error: string | null
+      }>
+      selectZipFile: () => Promise<string | null>
+      importPatchZip: (zipFilePath: string) => Promise<{
+        success: boolean
+        acceleratorPath?: string
+        error?: string
+      }>
+      setPath: (enginePath: string | null) => Promise<void>
+      getOnnxModelStatus: () => Promise<OnnxModelStatus>
+      selectOnnxZipFile: () => Promise<string | null>
+      importOnnxModelZip: (zipFilePath: string) => Promise<{
+        success: boolean
+        modelPath?: string
+        error?: string
+      }>
+      getGpuStatus: () => Promise<GpuPackStatus>
+      selectGpuZipFile: () => Promise<string | null>
+      importGpuPack: (zipFilePath: string) => Promise<{
+        success: boolean
         error?: string
       }>
     }

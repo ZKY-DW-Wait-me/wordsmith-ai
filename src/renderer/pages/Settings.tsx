@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Globe, Palette, Bot, Wrench, Check, Loader2, X, ChevronDown, AlertTriangle,
-  CheckCircle, XCircle, FolderOpen, Cloud, HardDrive
+  CheckCircle, XCircle, FolderOpen, Cloud, HardDrive, Cpu
 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { useI18n, useLocale, useSetLocale } from '../store/useI18nStore'
@@ -44,14 +44,21 @@ export default function SettingsPage() {
   const [ocrImporting, setOcrImporting] = useState(false)
   const [vlmTesting, setVlmTesting] = useState(false)
   const [showVlmProviderDropdown, setShowVlmProviderDropdown] = useState(false)
+  const [gpuStatus, setGpuStatus] = useState<GpuPackStatus | null>(null)
+  const [gpuImporting, setGpuImporting] = useState(false)
 
   const currentProvider = AI_PROVIDERS.find(p => p.url === settings.ai.baseUrl)
   const currentVlmProvider = VLM_PROVIDERS.find(p => p.url === settings.vlmOcr.baseUrl)
 
-  // Fetch OCR engine status when advanced tab is active
+  // Fetch OCR engine status and accelerator status when advanced tab is active
   useEffect(() => {
-    if (activeTab === 'advanced' && window.wordsmith?.ocr?.getEngineStatus) {
-      window.wordsmith.ocr.getEngineStatus().then(setOcrStatus)
+    if (activeTab === 'advanced') {
+      if (window.wordsmith?.ocr?.getEngineStatus) {
+        window.wordsmith.ocr.getEngineStatus().then(setOcrStatus)
+      }
+      if (window.wordsmith?.accel?.getGpuStatus) {
+        window.wordsmith.accel.getGpuStatus().then(setGpuStatus)
+      }
     }
   }, [activeTab])
 
@@ -129,6 +136,10 @@ export default function SettingsPage() {
         // Refresh status
         const status = await window.wordsmith.ocr.getEngineStatus()
         setOcrStatus(status)
+        // 同步刷新 GPU 状态（accelManager 的 enginePath 已在 IPC 中更新）
+        if (window.wordsmith?.accel?.getGpuStatus) {
+          window.wordsmith.accel.getGpuStatus().then(setGpuStatus)
+        }
       } else {
         toast({ title: 'OCR 引擎导入失败', description: result.error || '未知错误', variant: 'destructive' })
       }
@@ -136,6 +147,43 @@ export default function SettingsPage() {
       toast({ title: 'OCR 引擎导入失败', description: '操作过程中发生异常。', variant: 'destructive' })
     } finally {
       setOcrImporting(false)
+    }
+  }
+
+  const handleCheckDx12 = async () => {
+    if (!window.wordsmith?.accel) return
+    try {
+      const result = await window.wordsmith.accel.checkDx12()
+      if (result.supported) {
+        toast({ title: 'DirectX 12 兼容', description: `检测到显卡：${result.adapter}`, variant: 'success' })
+      } else {
+        toast({ title: 'DirectX 12 不兼容', description: result.error || '未检测到支持 DX12 的显卡', variant: 'warning' })
+      }
+    } catch {
+      toast({ title: '检测失败', description: '无法完成 DirectX 12 兼容性检查。', variant: 'destructive' })
+    }
+  }
+
+  const handleImportGpuPack = async () => {
+    if (!window.wordsmith?.accel) return
+    try {
+      const zipPath = await window.wordsmith.accel.selectGpuZipFile()
+      if (!zipPath) return
+
+      setGpuImporting(true)
+      const result = await window.wordsmith.accel.importGpuPack(zipPath)
+      if (result.success) {
+        toast({ title: 'GPU 加速包导入成功', description: 'GPU 加速功能已就绪。', variant: 'success' })
+        // 刷新状态
+        const status = await window.wordsmith.accel.getGpuStatus()
+        setGpuStatus(status)
+      } else {
+        toast({ title: 'GPU 加速包导入失败', description: result.error || '未知错误', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: 'GPU 加速包导入失败', description: '操作过程中发生异常。', variant: 'destructive' })
+    } finally {
+      setGpuImporting(false)
     }
   }
 
@@ -666,6 +714,94 @@ export default function SettingsPage() {
                       <li>{t.ocr.localStep4}</li>
                     </ol>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* GPU 加速卡片 — 仅本地模式可见 */}
+            {settings.ocrMode === 'local' && (
+              <div className="rounded-xl border border-zinc-200 bg-white p-5">
+                <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-zinc-900">
+                  <Cpu size={16} />
+                  GPU 加速 (实验性)
+                </h3>
+                <div className="space-y-4">
+                  {/* 统一状态显示 */}
+                  <div className="flex items-start gap-2">
+                    {gpuStatus?.ready ? (
+                      <>
+                        <CheckCircle size={16} className="mt-0.5 shrink-0 text-emerald-500" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-emerald-700">
+                            GPU 加速已就绪
+                            {gpuStatus.adapterName && (
+                              <span className="ml-1 font-normal text-zinc-500">— {gpuStatus.adapterName}</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-zinc-500">
+                            当前推理后端：{gpuStatus.activeProvider === 'DML' ? 'DirectML (GPU)' : 'CPU'}
+                          </p>
+                        </div>
+                      </>
+                    ) : gpuStatus && (gpuStatus.acceleratorInstalled || gpuStatus.onnxModelInstalled) ? (
+                      <>
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-500" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-amber-700">GPU 加速部分安装</p>
+                          <p className="text-xs text-zinc-500">
+                            {!gpuStatus.acceleratorInstalled && '缺少加速补丁 (DirectML DLL)。'}
+                            {!gpuStatus.onnxModelInstalled && '缺少 OCR 流水线模型。'}
+                            {gpuStatus.activeProvider !== 'DML' && gpuStatus.acceleratorInstalled && gpuStatus.onnxModelInstalled && '缺少 onnxruntime 运行时。'}
+                            {gpuStatus.error && ` ${gpuStatus.error}`}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle size={16} className="mt-0.5 shrink-0 text-zinc-400" />
+                        <div>
+                          <p className="text-sm font-medium text-zinc-600">GPU 加速未安装</p>
+                          <p className="text-xs text-zinc-500">
+                            导入 GPU 加速包以启用 DirectML 加速推理，显著提升 OCR 识别速度
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* 操作按钮 */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleCheckDx12}
+                      className="flex-1 gap-2"
+                    >
+                      检查 DirectX 12 兼容性
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleImportGpuPack}
+                      disabled={gpuImporting}
+                      className="flex-1 gap-2"
+                    >
+                      {gpuImporting ? (
+                        <><Loader2 size={14} className="animate-spin" /> 导入中...</>
+                      ) : (
+                        <><FolderOpen size={14} /> 导入 GPU 加速包 (.zip)</>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* 使用说明 */}
+                  <details className="rounded-lg bg-zinc-50 px-3 py-2.5 text-xs text-zinc-500">
+                    <summary className="cursor-pointer font-medium text-zinc-600">使用说明</summary>
+                    <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                      <li>确保已安装本地 OCR 引擎（上方"本地引擎"区域）</li>
+                      <li>点击"检查 DirectX 12 兼容性"确认显卡支持</li>
+                      <li>导入 GPU 加速包（包含 DirectML DLL + OCR 流水线模型，一个 zip 搞定）</li>
+                      <li>导入完成后，OCR 将自动切换到 GPU 加速的模块化流水线推理</li>
+                    </ol>
+                  </details>
                 </div>
               </div>
             )}
