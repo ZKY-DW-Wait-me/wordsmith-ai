@@ -2,8 +2,12 @@
  ## 📄 开源协议 (License)
 本项目采用 [GPL v3](LICENSE) 协议开源。
 
-# WordSmith AI（智排精灵）
-> 基于HTML的word排版工具
+<p align="center">
+  <img src="assets/logo.png" width="128" alt="WordSmith AI Logo" />
+</p>
+
+<h1 align="center">WordSmith AI（智排精灵）</h1>
+<p align="center">基于 HTML 的 AI Word 排版工具</p>
 
 ---
 

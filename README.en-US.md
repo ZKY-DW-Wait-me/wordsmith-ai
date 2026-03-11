@@ -1,9 +1,13 @@
  [简体中文](README.md) | [English](README.en-US.md)
- ## 📄 Open Source License  
-This project is open-sourced under the [GPL v3](LICENSE) license.  
+ ## 📄 Open Source License
+This project is open-sourced under the [GPL v3](LICENSE) license.
 
-# WordSmith AI (Smart Formatting Wizard)
-> A Word formatting tool based on HTML
+<p align="center">
+  <img src="assets/logo.png" width="128" alt="WordSmith AI Logo" />
+</p>
+
+<h1 align="center">WordSmith AI (Smart Formatting Wizard)</h1>
+<p align="center">An AI-powered Word formatting tool based on HTML</p>
 
 ---
 
