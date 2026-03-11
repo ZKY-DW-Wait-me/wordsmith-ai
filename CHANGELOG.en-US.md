@@ -1,6 +1,12 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md) 
 # Changelog
-## v1.1.1 (Current)
+## v1.1.2 (Current)
+### Added
+- Added OCR support for GPU inference acceleration using ```DirectML```, with universal compatibility for the Windows platform.
+### Changed
+- Adjusted OCR functionality, removed the PaddleOCR-VL from previous versions, and adopted a pipeline OCR mode (using ```layout_det.onnx, text_det.onnx, text_rec.onnx``` supplemented with the ```ppocr_keys_v1.txt``` dictionary)
+
+## v1.1.1
 ### Added
 - Added online OCR inference function. Users can manually select a specified service provider and vision model for OCR recognition in "Settings - Advanced - OCR Image Recognition", and the recognition results support manual modification.
 ### Changed

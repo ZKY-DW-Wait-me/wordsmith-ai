@@ -1,6 +1,12 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md) 
 # Changelog
-## v1.1.1 (Current)
+## v1.1.2 (Current)
+### Added
+- 新增OCR支持使用GPU推理加速，使用```DirectML```，对windows平台具有通用性
+### Changed
+- 调整了OCR功能，取消了此前版本中的PaddleOCR-VL，改采用流水线OCR模式(使用```layout_det.onnx,text_det.onnx,text_rec.onnx```并辅以```ppocr_keys_v1.txt```字典)
+
+## v1.1.1
 ### Added
 - 新增 OCR 在线推理功能，用户可以在“设置-高级-OCR 图片识别”中，手动选择指定服务商和视觉模型用于OCR识别，且识别结果支持手动修正更改。
 ### Changed
