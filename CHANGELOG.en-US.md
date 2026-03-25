@@ -1,5 +1,18 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
+## v1.1.4-beta.2 (beta/latex-editor)
+### Added
+- Added AI Formula Assistant: collapsible left panel with streaming chat to generate LaTeX formulas, specialized system prompt restricting output to formulas only
+- Added formula extraction + insert buttons: regex extracts formulas from AI responses (`$$...$$`, `$...$`, code blocks), one-click insert to input
+- Added hover highlight: hovering insert button highlights corresponding formula in AI message (violet background)
+- Added auto-insert toggle: when enabled, automatically inserts first formula after streaming completes
+- Added context count slider (0-20): controls how many historical message pairs to send to AI, default 10
+- Added staircase dual-panel layout: AI assistant and history can open simultaneously (AI left + history right), adaptive width not exceeding screen midpoint
+### Changed
+- Moved history panel from right to left side, both panel buttons unified on left column header
+- Improved formula extraction: `\begin{aligned}` and similar multi-line environments split by `\\` into individual formulas (≤10 lines split, >10 lines kept as whole block to prevent over-splitting)
+- History auto-records on successful render (no manual action needed)
+
 ## v1.1.4-beta.1 (beta/latex-editor)
 ### Added
 - Added LaTeX formula editor page (sidebar Σ entry) with real-time KaTeX preview and 8 example formulas

@@ -20,24 +20,51 @@ function formatRelativeTime(ts: number, t: { timeJustNow: string; timeMinAgo: st
   return t.timeDayAgo.replace('{n}', String(Math.floor(diff / 86400)))
 }
 
+// 拆分 aligned/cases 等多行环境为独立公式（超过 10 行保留原块）
+function splitAlignedBlock(block: string): string[] {
+  const envMatch = block.match(/\\begin\{(aligned|align\*?|cases|gathered)\}([\s\S]*?)\\end\{\1\}/)
+  if (!envMatch) return [block]
+
+  const envBody = envMatch[2]
+  const lines = envBody.split(/\\\\\s*/).map(l => l.replace(/^\s*&\s*/, '').replace(/&/g, '').trim()).filter(Boolean)
+  // 行数 ≤1 或 >10 时不拆分，保留整块
+  if (lines.length <= 1 || lines.length > 10) return [block]
+
+  const formulas: string[] = []
+  for (const line of lines) {
+    const cleaned = line.replace(/^\\text\{[^}]*\}\s*\\quad\s*/, '').trim()
+    if (cleaned) formulas.push(cleaned)
+  }
+  return formulas.length > 0 ? formulas : [block]
+}
+
 // LaTeX 公式提取
 function extractLatex(text: string): string[] {
   const results: string[] = []
   const seen = new Set<string>()
-  // $$...$$ 独立公式
+
+  const addUnique = (v: string) => {
+    const trimmed = v.trim()
+    if (trimmed && !seen.has(trimmed)) { seen.add(trimmed); results.push(trimmed) }
+  }
+
+  // $$...$$ 独立公式 — 拆分 aligned 环境
   for (const m of text.matchAll(/\$\$([\s\S]+?)\$\$/g)) {
-    const v = m[1].trim()
-    if (v && !seen.has(v)) { seen.add(v); results.push(v) }
+    const inner = m[1].trim()
+    if (!inner) continue
+    const parts = splitAlignedBlock(inner)
+    for (const p of parts) addUnique(p)
   }
   // $...$ 行内公式（排除已匹配的 $$）
   for (const m of text.matchAll(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g)) {
-    const v = m[1].trim()
-    if (v && !seen.has(v)) { seen.add(v); results.push(v) }
+    addUnique(m[1])
   }
-  // ```latex...``` 或 ```...```
+  // ```latex...``` 或 ```...``` — 也拆分 aligned
   for (const m of text.matchAll(/```(?:latex)?\n?([\s\S]*?)```/g)) {
-    const v = m[1].trim()
-    if (v && !seen.has(v)) { seen.add(v); results.push(v) }
+    const inner = m[1].trim()
+    if (!inner) continue
+    const parts = splitAlignedBlock(inner)
+    for (const p of parts) addUnique(p)
   }
   // 兜底：如果没提取到任何公式，整段文字当公式（去掉常见前缀）
   if (results.length === 0) {
@@ -109,6 +136,7 @@ export default function LatexPage() {
   const [aiInput, setAiInput] = useState('')
   const [aiStreaming, setAiStreaming] = useState(false)
   const [aiAutoInsert, setAiAutoInsert] = useState(false)
+  const [aiContextCount, setAiContextCount] = useState(10) // 上下文消息对数
   const [hoveredFormula, setHoveredFormula] = useState<string | null>(null)
   const aiAbortRef = useRef<AbortController | null>(null)
   const aiMessagesEndRef = useRef<HTMLDivElement>(null)
@@ -120,9 +148,11 @@ export default function LatexPage() {
 
   const hasAiConfig = !!(settings.ai.baseUrl && settings.ai.apiKey && settings.ai.model)
 
-  // 面板互斥：打开一个关另一个
-  const openAiPanel = () => { setAiPanelOpen(true); setHistoryOpen(false) }
-  const openHistory = () => { setHistoryOpen(true); setAiPanelOpen(false) }
+  // 面板可同时打开（阶梯式布局）
+  const toggleAiPanel = () => setAiPanelOpen(prev => !prev)
+  const toggleHistory = () => setHistoryOpen(prev => !prev)
+  // 两个面板都打开时使用较窄宽度，只开一个时用正常宽度
+  const bothOpen = aiPanelOpen && historyOpen
 
   // AI 消息滚动到底部
   useEffect(() => {
@@ -198,7 +228,6 @@ export default function LatexPage() {
 
   const loadFromHistory = (latex: string) => {
     setInput(latex)
-    setHistoryOpen(false)
   }
 
   // AI 发送消息
@@ -216,10 +245,15 @@ export default function LatexPage() {
 
     let accumulated = ''
     try {
+      // 按上下文数截取历史消息（每对 = 1 user + 1 assistant）
+      const contextMessages = aiContextCount === 0
+        ? [userMsg]
+        : prevMessages.slice(-(aiContextCount * 2))
+
       // 构造 rawMessages 跳过排版系统提示词
       const rawMessages: ChatMessage[] = [
         { role: 'system', content: LATEX_SYSTEM_PROMPT },
-        ...prevMessages.map(m => ({ role: m.role as ChatMessage['role'], content: m.content })),
+        ...contextMessages.map(m => ({ role: m.role as ChatMessage['role'], content: m.content })),
       ]
 
       for await (const delta of streamChat({
@@ -281,18 +315,37 @@ export default function LatexPage() {
         <div className="flex w-1/2 flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-zinc-700">{t.latex.title}</h2>
-            <button
-              onClick={() => aiPanelOpen ? setAiPanelOpen(false) : openAiPanel()}
-              className={cn(
-                'flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors',
-                aiPanelOpen
-                  ? 'bg-violet-100 text-violet-700'
-                  : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700'
-              )}
-            >
-              <Sparkles size={14} />
-              <span>{t.latex.aiChat}</span>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={toggleAiPanel}
+                className={cn(
+                  'flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors',
+                  aiPanelOpen
+                    ? 'bg-violet-100 text-violet-700'
+                    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700'
+                )}
+              >
+                <Sparkles size={14} />
+                <span>{t.latex.aiChat}</span>
+              </button>
+              <button
+                onClick={toggleHistory}
+                className={cn(
+                  'flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors',
+                  historyOpen
+                    ? 'bg-zinc-200 text-zinc-900'
+                    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700'
+                )}
+              >
+                <Clock size={14} />
+                <span>{t.latex.history}</span>
+                {historyItems.length > 0 && (
+                  <span className="ml-0.5 rounded-full bg-zinc-300 px-1.5 text-[10px] font-medium text-zinc-700">
+                    {historyItems.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           <textarea
@@ -322,25 +375,8 @@ export default function LatexPage() {
 
         {/* 右栏：预览 + 操作 */}
         <div className="flex w-1/2 flex-col gap-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <h2 className="text-sm font-medium text-zinc-700">{t.latex.preview}</h2>
-            <button
-              onClick={() => historyOpen ? setHistoryOpen(false) : openHistory()}
-              className={cn(
-                'flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors',
-                historyOpen
-                  ? 'bg-zinc-200 text-zinc-900'
-                  : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700'
-              )}
-            >
-              <Clock size={14} />
-              <span>{t.latex.history}</span>
-              {historyItems.length > 0 && (
-                <span className="ml-0.5 rounded-full bg-zinc-300 px-1.5 text-[10px] font-medium text-zinc-700">
-                  {historyItems.length}
-                </span>
-              )}
-            </button>
           </div>
 
           {/* KaTeX 渲染区 */}
@@ -401,206 +437,231 @@ export default function LatexPage() {
         </div>
       </div>
 
-      {/* AI 对话面板 — 从左侧滑入 */}
+      {/* 左侧阶梯式面板容器 */}
       <div
         className={cn(
-          'absolute left-0 top-9 bottom-0 z-10 flex w-96 flex-col border-r border-zinc-200 bg-white shadow-lg transition-transform duration-200',
-          aiPanelOpen ? 'translate-x-0' : '-translate-x-full'
+          'absolute left-0 top-9 bottom-0 z-10 flex transition-all duration-200',
+          !aiPanelOpen && !historyOpen && 'pointer-events-none'
         )}
+        style={{ maxWidth: '50%' }}
       >
-        {/* 面板头部 */}
-        <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
-          <h3 className="flex items-center gap-1.5 text-sm font-medium text-zinc-800">
-            <Sparkles size={14} className="text-violet-500" />
-            {t.latex.aiChat}
-          </h3>
-          <div className="flex items-center gap-1">
-            {/* 自动填入开关 */}
-            <button
-              onClick={() => setAiAutoInsert(!aiAutoInsert)}
-              className={cn(
-                'flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors',
-                aiAutoInsert
-                  ? 'bg-violet-100 text-violet-700'
-                  : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600'
-              )}
-              title={t.latex.aiAutoInsert}
-            >
-              <ArrowDownToLine size={12} />
-              <span>{t.latex.aiAutoInsert}</span>
-            </button>
-            {aiMessages.length > 0 && (
-              <button
-                onClick={clearAiChat}
-                className="rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600"
-              >
-                {t.latex.aiClearChat}
-              </button>
-            )}
-            <button
-              onClick={() => setAiPanelOpen(false)}
-              className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* 消息区 */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          {aiMessages.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-xs text-zinc-400">
-              {hasAiConfig ? t.latex.aiEmpty : t.latex.aiNoConfig}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {aiMessages.map((msg, i) => (
-                <div key={i} className={cn('flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start')}>
-                  {/* 消息气泡 */}
-                  <div
-                    className={cn(
-                      'max-w-[90%] rounded-xl px-3 py-2 text-xs leading-relaxed',
-                      msg.role === 'user'
-                        ? 'bg-zinc-100 text-zinc-800'
-                        : 'border border-zinc-200 bg-white text-zinc-700'
-                    )}
-                  >
-                    {msg.role === 'assistant' && msg.content === '' && aiStreaming ? (
-                      <span className="inline-block animate-pulse text-zinc-400">...</span>
-                    ) : (
-                      <pre className="whitespace-pre-wrap break-all font-mono">
-                        {msg.role === 'assistant' && hoveredFormula && msg.content.includes(hoveredFormula)
-                          ? highlightFormula(msg.content, hoveredFormula)
-                          : msg.content}
-                      </pre>
-                    )}
-                  </div>
-
-                  {/* AI 消息：提取公式 + 插入按钮 */}
-                  {msg.role === 'assistant' && msg.content && !(aiStreaming && i === aiMessages.length - 1) && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {extractLatex(msg.content).map((formula, fi) => (
-                        <button
-                          key={fi}
-                          onClick={() => setInput(formula)}
-                          onMouseEnter={() => setHoveredFormula(formula)}
-                          onMouseLeave={() => setHoveredFormula(null)}
-                          className="flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700 transition-colors hover:bg-violet-100"
-                        >
-                          <ArrowDownToLine size={10} />
-                          {t.latex.aiInsert}
-                          {extractLatex(msg.content).length > 1 && ` #${fi + 1}`}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div ref={aiMessagesEndRef} />
-            </div>
+        {/* AI 对话面板 */}
+        <div
+          className={cn(
+            'flex flex-col border-r border-zinc-200 bg-white shadow-lg transition-all duration-200 overflow-hidden',
+            aiPanelOpen ? (bothOpen ? 'w-72' : 'w-96') : 'w-0'
           )}
-        </div>
-
-        {/* 输入区 */}
-        <div className="border-t border-zinc-100 px-4 py-3">
-          <div className="flex gap-2">
-            <textarea
-              className="min-h-[36px] max-h-24 flex-1 resize-none rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-800 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white"
-              placeholder={hasAiConfig ? t.latex.aiPlaceholder : t.latex.aiNoConfig}
-              value={aiInput}
-              onChange={(e) => setAiInput(e.target.value)}
-              onKeyDown={handleAiKeyDown}
-              disabled={!hasAiConfig || aiStreaming}
-              rows={1}
-            />
-            {aiStreaming ? (
+        >
+          {/* 面板头部 */}
+          <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 shrink-0">
+            <h3 className="flex items-center gap-1.5 text-sm font-medium text-zinc-800 whitespace-nowrap">
+              <Sparkles size={14} className="text-violet-500" />
+              {t.latex.aiChat}
+            </h3>
+            <div className="flex items-center gap-1">
+              {/* 自动填入开关 */}
               <button
-                onClick={stopAiStream}
-                className="shrink-0 rounded-lg bg-red-500 p-2 text-white transition-colors hover:bg-red-600"
-              >
-                <Square size={14} />
-              </button>
-            ) : (
-              <button
-                onClick={sendAiMessage}
-                disabled={!aiInput.trim() || !hasAiConfig}
+                onClick={() => setAiAutoInsert(!aiAutoInsert)}
                 className={cn(
-                  'shrink-0 rounded-lg p-2 transition-colors',
-                  aiInput.trim() && hasAiConfig
-                    ? 'bg-violet-600 text-white hover:bg-violet-700'
-                    : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+                  'flex items-center gap-1 rounded-md px-2 py-1 text-xs transition-colors whitespace-nowrap',
+                  aiAutoInsert
+                    ? 'bg-violet-100 text-violet-700'
+                    : 'text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600'
                 )}
+                title={t.latex.aiAutoInsert}
               >
-                <Send size={14} />
+                <ArrowDownToLine size={12} />
+                <span>{t.latex.aiAutoInsert}</span>
               </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 历史记录面板 — Edge 下载面板风格，从右侧滑入 */}
-      <div
-        className={cn(
-          'absolute right-0 top-9 bottom-0 z-10 flex w-80 flex-col border-l border-zinc-200 bg-white shadow-lg transition-transform duration-200',
-          historyOpen ? 'translate-x-0' : 'translate-x-full'
-        )}
-      >
-        {/* 面板头部 */}
-        <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
-          <h3 className="text-sm font-medium text-zinc-800">{t.latex.history}</h3>
-          <div className="flex items-center gap-1">
-            {historyItems.length > 0 && (
-              <button
-                onClick={clearHistory}
-                className="rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600"
-              >
-                {t.latex.clearHistory}
-              </button>
-            )}
-            <button
-              onClick={() => setHistoryOpen(false)}
-              className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* 面板列表 */}
-        <div className="flex-1 overflow-y-auto">
-          {historyItems.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-xs text-zinc-400">
-              {t.latex.historyEmpty}
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {historyItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="group flex cursor-pointer items-start gap-2 border-b border-zinc-50 px-4 py-3 transition-colors hover:bg-zinc-50"
-                  onClick={() => loadFromHistory(item.latex)}
+              {aiMessages.length > 0 && (
+                <button
+                  onClick={clearAiChat}
+                  className="rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 whitespace-nowrap"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-mono text-xs text-zinc-700">
-                      {item.latex.length > 80 ? item.latex.slice(0, 80) + '...' : item.latex}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-zinc-400">
-                      {formatRelativeTime(item.createdAt, t.latex)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeHistoryItem(item.id)
-                    }}
-                    className="mt-0.5 shrink-0 rounded p-0.5 text-zinc-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              ))}
+                  {t.latex.aiClearChat}
+                </button>
+              )}
+              <button
+                onClick={() => setAiPanelOpen(false)}
+                className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+              >
+                <X size={16} />
+              </button>
             </div>
+          </div>
+
+          {/* 上下文数滑条 */}
+          <div className="flex items-center gap-2 border-b border-zinc-50 px-4 py-2 shrink-0">
+            <span className="text-[10px] text-zinc-400 whitespace-nowrap">{t.latex.aiContextCount}</span>
+            <input
+              type="range"
+              min={0}
+              max={20}
+              value={aiContextCount}
+              onChange={(e) => setAiContextCount(Number(e.target.value))}
+              className="h-1 flex-1 cursor-pointer accent-violet-500"
+            />
+            <span className="min-w-[2ch] text-right text-[10px] font-medium text-zinc-600">
+              {aiContextCount}
+            </span>
+          </div>
+
+          {/* 消息区 */}
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            {aiMessages.length === 0 ? (
+              <div className="flex h-32 items-center justify-center text-xs text-zinc-400">
+                {hasAiConfig ? t.latex.aiEmpty : t.latex.aiNoConfig}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {aiMessages.map((msg, i) => (
+                  <div key={i} className={cn('flex flex-col', msg.role === 'user' ? 'items-end' : 'items-start')}>
+                    {/* 消息气泡 */}
+                    <div
+                      className={cn(
+                        'max-w-[90%] rounded-xl px-3 py-2 text-xs leading-relaxed',
+                        msg.role === 'user'
+                          ? 'bg-zinc-100 text-zinc-800'
+                          : 'border border-zinc-200 bg-white text-zinc-700'
+                      )}
+                    >
+                      {msg.role === 'assistant' && msg.content === '' && aiStreaming ? (
+                        <span className="inline-block animate-pulse text-zinc-400">...</span>
+                      ) : (
+                        <pre className="whitespace-pre-wrap break-all font-mono">
+                          {msg.role === 'assistant' && hoveredFormula && msg.content.includes(hoveredFormula)
+                            ? highlightFormula(msg.content, hoveredFormula)
+                            : msg.content}
+                        </pre>
+                      )}
+                    </div>
+
+                    {/* AI 消息：提取公式 + 插入按钮 */}
+                    {msg.role === 'assistant' && msg.content && !(aiStreaming && i === aiMessages.length - 1) && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {extractLatex(msg.content).map((formula, fi) => (
+                          <button
+                            key={fi}
+                            onClick={() => setInput(formula)}
+                            onMouseEnter={() => setHoveredFormula(formula)}
+                            onMouseLeave={() => setHoveredFormula(null)}
+                            className="flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700 transition-colors hover:bg-violet-100"
+                          >
+                            <ArrowDownToLine size={10} />
+                            {t.latex.aiInsert}
+                            {extractLatex(msg.content).length > 1 && ` #${fi + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div ref={aiMessagesEndRef} />
+              </div>
+            )}
+          </div>
+
+          {/* 输入区 */}
+          <div className="border-t border-zinc-100 px-4 py-3 shrink-0">
+            <div className="flex gap-2">
+              <textarea
+                className="min-h-[36px] max-h-24 flex-1 resize-none rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-800 outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 focus:bg-white"
+                placeholder={hasAiConfig ? t.latex.aiPlaceholder : t.latex.aiNoConfig}
+                value={aiInput}
+                onChange={(e) => setAiInput(e.target.value)}
+                onKeyDown={handleAiKeyDown}
+                disabled={!hasAiConfig || aiStreaming}
+                rows={1}
+              />
+              {aiStreaming ? (
+                <button
+                  onClick={stopAiStream}
+                  className="shrink-0 rounded-lg bg-red-500 p-2 text-white transition-colors hover:bg-red-600"
+                >
+                  <Square size={14} />
+                </button>
+              ) : (
+                <button
+                  onClick={sendAiMessage}
+                  disabled={!aiInput.trim() || !hasAiConfig}
+                  className={cn(
+                    'shrink-0 rounded-lg p-2 transition-colors',
+                    aiInput.trim() && hasAiConfig
+                      ? 'bg-violet-600 text-white hover:bg-violet-700'
+                      : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+                  )}
+                >
+                  <Send size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 历史记录面板 */}
+        <div
+          className={cn(
+            'flex flex-col border-r border-zinc-200 bg-white shadow-lg transition-all duration-200 overflow-hidden',
+            historyOpen ? (bothOpen ? 'w-64' : 'w-80') : 'w-0'
           )}
+        >
+          {/* 面板头部 */}
+          <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 shrink-0">
+            <h3 className="text-sm font-medium text-zinc-800 whitespace-nowrap">{t.latex.history}</h3>
+            <div className="flex items-center gap-1">
+              {historyItems.length > 0 && (
+                <button
+                  onClick={clearHistory}
+                  className="rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 whitespace-nowrap"
+                >
+                  {t.latex.clearHistory}
+                </button>
+              )}
+              <button
+                onClick={() => setHistoryOpen(false)}
+                className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* 面板列表 */}
+          <div className="flex-1 overflow-y-auto">
+            {historyItems.length === 0 ? (
+              <div className="flex h-32 items-center justify-center text-xs text-zinc-400 whitespace-nowrap">
+                {t.latex.historyEmpty}
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {historyItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="group flex cursor-pointer items-start gap-2 border-b border-zinc-50 px-4 py-3 transition-colors hover:bg-zinc-50"
+                    onClick={() => loadFromHistory(item.latex)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-xs text-zinc-700">
+                        {item.latex.length > 80 ? item.latex.slice(0, 80) + '...' : item.latex}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-zinc-400">
+                        {formatRelativeTime(item.createdAt, t.latex)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeHistoryItem(item.id)
+                      }}
+                      className="mt-0.5 shrink-0 rounded p-0.5 text-zinc-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

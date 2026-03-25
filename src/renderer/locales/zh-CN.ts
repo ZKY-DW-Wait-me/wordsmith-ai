@@ -186,6 +186,7 @@ export const zhCN = {
     aiClearChat: '清空对话',
     aiError: 'AI 请求失败',
     aiNoConfig: '请先在设置中配置 AI 服务',
+    aiContextCount: '上下文数',
   },
 }
 

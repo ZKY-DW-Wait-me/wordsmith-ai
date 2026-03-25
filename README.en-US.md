@@ -24,10 +24,11 @@ Recognition results support manual correction. Users can directly upload or drag
 Additionally, v1.1.4-beta introduces a **LaTeX Formula Editor** (sidebar Σ entry), supporting:
 - Real-time KaTeX preview + LaTeX → UnicodeMath conversion (paste into Word, press Alt+= then Space to build the formula)
 - High-DPI image export (4x super-sampling + smart crop + DPI metadata matching Word 11pt font)
-- Edge-style formula history panel
+- AI Formula Assistant (streaming chat to generate LaTeX, one-click insert) + context count control
+- Staircase dual-panel layout (AI assistant + history can open simultaneously)
 
 ### 📥 Installation Instructions
-1. Download the latest version of the .exe installer (Current latest: **v1.1.3**, LaTeX editor beta: **v1.1.4-beta.1**).
+1. Download the latest version of the .exe installer (Current latest: **v1.1.3**, LaTeX editor beta: **v1.1.4-beta.2**).
 2. **OCR functionality** requires additional engine packages, configured in "Settings → Advanced → OCR Image Recognition":
    - **Local OCR**: Import `wordsmith-ocr-engine.zip` (OCR engine, ~1.8GB) and `wordsmith-gpu-pack.zip` (GPU acceleration pack, ~317MB). DirectML GPU acceleration is enabled automatically after import; falls back to CPU when no GPU is available.
    - **Cloud OCR**: Enter the API Key from your service provider and select a vision model.

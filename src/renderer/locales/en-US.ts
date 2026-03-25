@@ -188,5 +188,6 @@ export const enUS: LocaleResource = {
     aiClearChat: 'Clear Chat',
     aiError: 'AI request failed',
     aiNoConfig: 'Please configure AI service in Settings first',
+    aiContextCount: 'Context',
   },
 }
