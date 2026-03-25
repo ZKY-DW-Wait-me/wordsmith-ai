@@ -1,5 +1,16 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
+## v1.1.4-beta.1 (beta/latex-editor)
+### Added
+- Added LaTeX formula editor page (sidebar Σ entry) with real-time KaTeX preview and 8 example formulas
+- Added LaTeX → UnicodeMath converter covering: fractions, superscripts/subscripts, Greek letters, roots, matrices (`\matrix()` format), piecewise functions (`\cases` → `{█(...)┤`), `\dot`/`\ddot` modifiers, `\mathbf` and other math fonts, large operator protection in fractions
+- Added high-DPI image export: 4x super-sampling DOM rendering + white-to-transparent conversion + getImageData smart crop + PNG pHYs DPI metadata injection (~524 DPI, matching Word 11pt font size)
+- Added Edge-style history panel (slides in from right, Zustand persisted, max 100 entries, auto-deduplication)
+- Added `captureAreaAsDataUrl` IPC channel (captures area as data URL for renderer-side post-processing)
+- Added 25 UnicodeMath conversion unit tests
+### Changed
+- Switched image export from SVG foreignObject to Electron captureArea + Canvas post-processing, fixing KaTeX font loading failure in Blob URL context
+
 ## v1.1.3 (Current)
 ### Added
 - Added table structure enhancement: integrated RT-DETR-L wired/wireless table cell detection models (`table_wired_det.onnx` + `table_wireless_det.onnx`), 3-level fallback chain (model detection → morphological grid → coordinate clustering), significantly improved complex table reconstruction

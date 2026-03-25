@@ -21,9 +21,14 @@ WordSmith AI 是利用HTML格式，通过严格提示词限制，与AI对话，�
 
 识别结果支持手动二次更正，用户可直接上传或拖拽图片进行文本识别。
 
+此外，v1.1.4-beta 新增了 **LaTeX 公式编辑器**（侧边栏 Σ 入口），支持：
+- KaTeX 实时预览 + LaTeX → UnicodeMath 转换（粘贴到 Word 后 Alt+= 空格即可构建公式）
+- 高清图片导出（4x 超采样 + 智能裁剪 + DPI 适配 Word 11pt 字号）
+- Edge 风格历史记录面板
+
 
 ### 📥 如何安装
-1.  下载最新版本的 `.exe` 安装包（当前最新：**v1.1.2**）。
+1.  下载最新版本的 `.exe` 安装包（当前最新：**v1.1.3**，LaTeX 编辑器测试版：**v1.1.4-beta.1**）。
 2.  **OCR 功能**需额外导入引擎包，在「设置 → 高级 → OCR 图片识别」中操作：
     - **本地 OCR**：依次导入 `wordsmith-ocr-engine.zip`（OCR 引擎，约 3.9GB）和 `wordsmith-gpu-pack.zip`（GPU 加速包，约 543MB）。导入后自动启用 DirectML GPU 加速，无 GPU 时自动回退 CPU。
     - **云端 OCR**：填写对应服务商的 API Key，选择视觉模型即可使用。

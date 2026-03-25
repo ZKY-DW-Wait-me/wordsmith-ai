@@ -1,5 +1,16 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
+## v1.1.4-beta.1 (beta/latex-editor)
+### Added
+- 新增 LaTeX 公式编辑器页面（侧边栏 Σ 入口），支持 KaTeX 实时预览 + 8 个示例公式
+- 新增 LaTeX → UnicodeMath 转换器，覆盖：分数、上下标、希腊字母、根号、矩阵（`\matrix()` 格式）、分段函数（`\cases` → `{█(...)┤`）、`\dot`/`\ddot` 修饰符、`\mathbf` 等数学字体、大型算子保护
+- 新增高清图片导出：4x 超采样 DOM 渲染 + 白转透明 + getImageData 智能裁剪 + PNG pHYs DPI 元数据注入（~524 DPI，适配 Word 11pt 字号）
+- 新增 Edge 风格历史记录面板（右侧滑入，Zustand 持久化，最多 100 条，自动去重）
+- 新增 `captureAreaAsDataUrl` IPC 通道（截取区域返回 data URL，供渲染器侧后处理）
+- 新增 25 个 UnicodeMath 转换单元测试
+### Changed
+- 图片导出从 SVG foreignObject 方案改为 Electron captureArea + Canvas 后处理方案，解决 KaTeX 字体在 Blob URL 上下文无法加载的问题
+
 ## v1.1.3 (Current)
 ### Added
 - 新增表格结构增强：接入 RT-DETR-L 有线/无线表格单元格检测模型（`table_wired_det.onnx` + `table_wireless_det.onnx`），3 级回退链（模型检测 → 形态学网格 → 坐标聚类），复杂表格重建精度显著提升
