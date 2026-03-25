@@ -1,6 +1,9 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
-## v1.1.4-beta.2 (beta/latex-editor)
+
+> **版本号规范**: 正式版使用 `vX.Y.Z`，beta 分支使用 `vX.Y.Z-<feature>.N` 区分功能线。合并至 main 后统一提升为下一个正式版号。
+
+## v1.1.4-latex.2 (beta/latex-editor)
 ### Added
 - 新增 AI 公式助手：左侧可折叠面板，流式对话生成 LaTeX 公式，专用系统提示词限制只返回公式
 - 新增公式提取 + 插入按钮：从 AI 回复中正则提取 `$$...$$`、`$...$`、代码块中的公式，一键填入输入框
@@ -13,7 +16,7 @@
 - 优化公式提取：`\begin{aligned}` 等多行环境按 `\\` 拆分为独立公式（≤10 行拆分，>10 行保留整块防过度拆分）
 - 渲染成功即自动记录历史（无需手动操作）
 
-## v1.1.4-beta.1 (beta/latex-editor)
+## v1.1.4-latex.1 (beta/latex-editor)
 ### Added
 - 新增 LaTeX 公式编辑器页面（侧边栏 Σ 入口），支持 KaTeX 实时预览 + 8 个示例公式
 - 新增 LaTeX → UnicodeMath 转换器，覆盖：分数、上下标、希腊字母、根号、矩阵（`\matrix()` 格式）、分段函数（`\cases` → `{█(...)┤`）、`\dot`/`\ddot` 修饰符、`\mathbf` 等数学字体、大型算子保护

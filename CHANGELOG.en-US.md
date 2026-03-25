@@ -1,6 +1,9 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
-## v1.1.4-beta.2 (beta/latex-editor)
+
+> **Version Numbering**: Release versions use `vX.Y.Z`, beta branches use `vX.Y.Z-<feature>.N` to distinguish feature lines. Merged to main as the next release version.
+
+## v1.1.4-latex.2 (beta/latex-editor)
 ### Added
 - Added AI Formula Assistant: collapsible left panel with streaming chat to generate LaTeX formulas, specialized system prompt restricting output to formulas only
 - Added formula extraction + insert buttons: regex extracts formulas from AI responses (`$$...$$`, `$...$`, code blocks), one-click insert to input
@@ -13,7 +16,7 @@
 - Improved formula extraction: `\begin{aligned}` and similar multi-line environments split by `\\` into individual formulas (≤10 lines split, >10 lines kept as whole block to prevent over-splitting)
 - History auto-records on successful render (no manual action needed)
 
-## v1.1.4-beta.1 (beta/latex-editor)
+## v1.1.4-latex.1 (beta/latex-editor)
 ### Added
 - Added LaTeX formula editor page (sidebar Σ entry) with real-time KaTeX preview and 8 example formulas
 - Added LaTeX → UnicodeMath converter covering: fractions, superscripts/subscripts, Greek letters, roots, matrices (`\matrix()` format), piecewise functions (`\cases` → `{█(...)┤`), `\dot`/`\ddot` modifiers, `\mathbf` and other math fonts, large operator protection in fractions
