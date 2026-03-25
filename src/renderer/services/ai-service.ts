@@ -97,7 +97,7 @@ export async function* streamChat(request: StreamChatRequest): AsyncGenerator<st
     body: JSON.stringify({
       model: request.model.model,
       stream: true,
-      messages: buildInjectedMessages(request, request.customInstruction, request.referenceFiles),
+      messages: request.rawMessages ?? buildInjectedMessages(request, request.customInstruction, request.referenceFiles),
     }),
     signal: request.signal,
   })

@@ -45,4 +45,6 @@ export interface StreamChatRequest {
   signal?: AbortSignal
   customInstruction?: string
   referenceFiles?: ReferenceFileInput[]
+  /** 提供时直接作为请求消息，跳过 buildInjectedMessages 注入 */
+  rawMessages?: ChatMessage[]
 }

@@ -180,5 +180,13 @@ export const enUS: LocaleResource = {
     timeMinAgo: '{n} min ago',
     timeHrAgo: '{n} hr ago',
     timeDayAgo: '{n} days ago',
+    aiChat: 'AI Assistant',
+    aiPlaceholder: 'Describe the formula you need, e.g. "double integral"',
+    aiEmpty: 'Describe the formula you need, AI generates LaTeX for you',
+    aiInsert: 'Insert',
+    aiAutoInsert: 'Auto Insert',
+    aiClearChat: 'Clear Chat',
+    aiError: 'AI request failed',
+    aiNoConfig: 'Please configure AI service in Settings first',
   },
 }

@@ -178,6 +178,14 @@ export const zhCN = {
     timeMinAgo: '{n} 分钟前',
     timeHrAgo: '{n} 小时前',
     timeDayAgo: '{n} 天前',
+    aiChat: 'AI 助手',
+    aiPlaceholder: '描述你想要的公式，例如"二重积分"',
+    aiEmpty: '描述你需要的公式，AI 帮你生成 LaTeX',
+    aiInsert: '插入',
+    aiAutoInsert: '自动填入',
+    aiClearChat: '清空对话',
+    aiError: 'AI 请求失败',
+    aiNoConfig: '请先在设置中配置 AI 服务',
   },
 }
 
