@@ -47,6 +47,31 @@ function extractLatex(text: string): string[] {
   return results
 }
 
+/** 在消息文本中高亮指定公式（用于悬停插入按钮时） */
+function highlightFormula(text: string, formula: string): React.ReactNode[] {
+  const idx = text.indexOf(formula)
+  if (idx === -1) return [text]
+
+  // 查找包含该公式的完整 $$...$$ 或 ```...``` 块
+  let start = idx, end = idx + formula.length
+  // 向前找 $$ 或 ```
+  const before = text.lastIndexOf('$$', idx)
+  if (before !== -1 && before >= idx - 10) start = before
+  const codeBefore = text.lastIndexOf('```', idx)
+  if (codeBefore !== -1 && codeBefore >= idx - 20) start = Math.min(start, codeBefore)
+  // 向后找 $$ 或 ```
+  const after = text.indexOf('$$', idx + formula.length)
+  if (after !== -1 && after <= idx + formula.length + 10) end = after + 2
+  const codeAfter = text.indexOf('```', idx + formula.length)
+  if (codeAfter !== -1 && codeAfter <= idx + formula.length + 20) end = Math.max(end, codeAfter + 3)
+
+  return [
+    text.slice(0, start),
+    <span key="hl" className="rounded bg-violet-100 text-violet-900">{text.slice(start, end)}</span>,
+    text.slice(end),
+  ]
+}
+
 // AI 系统提示词
 const LATEX_SYSTEM_PROMPT = `你是一个 LaTeX 公式助手。用户会用自然语言描述他们需要的数学公式，你需要：
 
@@ -84,6 +109,7 @@ export default function LatexPage() {
   const [aiInput, setAiInput] = useState('')
   const [aiStreaming, setAiStreaming] = useState(false)
   const [aiAutoInsert, setAiAutoInsert] = useState(false)
+  const [hoveredFormula, setHoveredFormula] = useState<string | null>(null)
   const aiAbortRef = useRef<AbortController | null>(null)
   const aiMessagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -103,7 +129,7 @@ export default function LatexPage() {
     aiMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [aiMessages])
 
-  // 150ms 防抖渲染 KaTeX
+  // 150ms 防抖渲染 KaTeX — 渲染成功即记录历史
   const renderPreview = useCallback((latex: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
@@ -120,11 +146,12 @@ export default function LatexPage() {
           output: 'html',
         })
         setError('')
+        addHistoryItem(latex)
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : t.latex.parseError)
       }
     }, 150)
-  }, [t])
+  }, [t, addHistoryItem])
 
   useEffect(() => {
     renderPreview(input)
@@ -139,7 +166,6 @@ export default function LatexPage() {
     try {
       const um = latexToUnicodeMath(input)
       await navigator.clipboard.writeText(um)
-      addHistoryItem(input)
       toast({ title: t.latex.copySuccess })
     } catch {
       toast({ title: t.latex.copyFailed, variant: 'destructive' })
@@ -162,7 +188,6 @@ export default function LatexPage() {
           new ClipboardItem({ 'image/png': blob }),
         ])
       }
-      addHistoryItem(input)
       toast({ title: t.latex.copySuccess })
     } catch {
       toast({ title: t.latex.copyFailed, variant: 'destructive' })
@@ -443,7 +468,11 @@ export default function LatexPage() {
                     {msg.role === 'assistant' && msg.content === '' && aiStreaming ? (
                       <span className="inline-block animate-pulse text-zinc-400">...</span>
                     ) : (
-                      <pre className="whitespace-pre-wrap break-all font-mono">{msg.content}</pre>
+                      <pre className="whitespace-pre-wrap break-all font-mono">
+                        {msg.role === 'assistant' && hoveredFormula && msg.content.includes(hoveredFormula)
+                          ? highlightFormula(msg.content, hoveredFormula)
+                          : msg.content}
+                      </pre>
                     )}
                   </div>
 
@@ -454,6 +483,8 @@ export default function LatexPage() {
                         <button
                           key={fi}
                           onClick={() => setInput(formula)}
+                          onMouseEnter={() => setHoveredFormula(formula)}
+                          onMouseLeave={() => setHoveredFormula(null)}
                           className="flex items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700 transition-colors hover:bg-violet-100"
                         >
                           <ArrowDownToLine size={10} />
