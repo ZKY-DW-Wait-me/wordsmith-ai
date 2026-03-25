@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { AIModelConfig, ChatMessage, PromptMode, RecentModels, VlmOcrConfig } from '../types/ai'
+import type { AIModelConfig, ChatMessage, PinnedRound, PromptMode, RecentModels, VlmOcrConfig } from '../types/ai'
 import type { ReferenceFile } from '../lib/hidden-protocol'
 import type { GuardReport } from '../types/guard'
 
@@ -46,6 +46,8 @@ export interface WorkspaceState {
   mode: PromptMode
   input: string
   streaming: boolean
+  // key=轮次索引, true=强制包含(窗口外), false=强制排除(窗口内)
+  roundOverrides: Record<number, boolean>
 }
 
 /**
@@ -64,6 +66,7 @@ export interface AppSettings {
   recentModels: RecentModels
   providerApiKeys: Record<string, string>
   acceleratorPath: string | null
+  contextMaxRounds: number
 }
 
 /**
@@ -75,6 +78,7 @@ export interface AppState {
   customInstruction: string
   referenceFiles: ReferenceFile[]
   workspace: WorkspaceState
+  pinnedRounds: PinnedRound[]
 
   updateAi: (partial: Partial<AIModelConfig>) => void
   updateTypography: (partial: Partial<AIDefaultTypography>) => void
@@ -103,6 +107,12 @@ export interface AppState {
   // 多对话管理
   createNewChat: () => void
   loadChat: (historyId: string) => boolean
+
+  // 上下文控制
+  toggleRoundOverride: (roundIndex: number) => void
+  addPinnedRound: (round: Omit<PinnedRound, 'id' | 'pinnedAt'>) => boolean
+  removePinnedRound: (id: string) => void
+  clearPinnedRounds: () => void
 }
 
 function uid(prefix: string): string {
@@ -122,6 +132,7 @@ const defaultWorkspace: WorkspaceState = {
   mode: 'generate',
   input: '',
   streaming: false,
+  roundOverrides: {},
 }
 
 export const useAppStore = create<AppState>()(
@@ -140,11 +151,13 @@ export const useAppStore = create<AppState>()(
         recentModels: { ai: {}, vlm: {} },
         providerApiKeys: {},
         acceleratorPath: null,
+        contextMaxRounds: 10,
       },
       history: [],
       customInstruction: '',
       referenceFiles: [],
       workspace: defaultWorkspace,
+      pinnedRounds: [],
 
       updateAi: (partial) =>
         set((s) => {
@@ -295,10 +308,49 @@ export const useAppStore = create<AppState>()(
             mode: historyItem.mode,
             input: '',
             streaming: false,
+            roundOverrides: {},
           },
         })
         return true
       },
+
+      // 上下文控制
+      toggleRoundOverride: (roundIndex: number) =>
+        set((s) => {
+          const overrides = { ...s.workspace.roundOverrides }
+          if (roundIndex in overrides) {
+            delete overrides[roundIndex]
+          } else {
+            // 计算当前轮次总数
+            const totalRounds = Math.floor(
+              s.workspace.messages.filter((m) => m.role === 'user' || m.role === 'assistant').length / 2
+            )
+            const windowStart = Math.max(0, totalRounds - s.settings.contextMaxRounds)
+            const inWindow = s.settings.contextMaxRounds === 0 || roundIndex >= windowStart
+            // 窗口内默认包含 → 设为 false 排除；窗口外默认排除 → 设为 true 包含
+            overrides[roundIndex] = !inWindow
+          }
+          return { workspace: { ...s.workspace, roundOverrides: overrides } }
+        }),
+
+      addPinnedRound: (round) => {
+        const state = get()
+        if (state.pinnedRounds.length >= 10) return false
+        set({
+          pinnedRounds: [
+            ...state.pinnedRounds,
+            { ...round, id: uid('pin'), pinnedAt: Date.now() },
+          ],
+        })
+        return true
+      },
+
+      removePinnedRound: (id) =>
+        set((s) => ({
+          pinnedRounds: s.pinnedRounds.filter((p) => p.id !== id),
+        })),
+
+      clearPinnedRounds: () => set({ pinnedRounds: [] }),
     }),
     {
       name: 'wordsmith-storage',
@@ -308,6 +360,7 @@ export const useAppStore = create<AppState>()(
         customInstruction: state.customInstruction,
         referenceFiles: state.referenceFiles,
         workspace: state.workspace,
+        pinnedRounds: state.pinnedRounds,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<AppState>
@@ -336,6 +389,10 @@ export const useAppStore = create<AppState>()(
               ...(p.settings.providerApiKeys || {}),
             },
           }
+        }
+        // 兼容老用户 workspace 中没有 roundOverrides 的情况
+        if (p.workspace && !('roundOverrides' in p.workspace)) {
+          (merged as AppState).workspace.roundOverrides = {}
         }
         return merged as AppState
       },

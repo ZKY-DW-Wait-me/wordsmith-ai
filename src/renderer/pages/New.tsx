@@ -3,25 +3,33 @@ import {
   FileText, Upload, X, Copy, Code, RefreshCw,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
   Sparkles, ArrowRight, Maximize2, ExternalLink, AlertCircle, FileCode2,
-  Loader2, Pencil
+  Loader2, Pencil, BookmarkPlus
 } from 'lucide-react'
 import { guardHtml } from '../lib/protocol-guard'
 import { getTemplateById } from '../lib/templates'
 import { ChatPanel } from '../components/business/ChatPanel'
+import { PinnedRoundsDialog } from '../components/business/PinnedRoundsDialog'
 import { useAppStore } from '../store/useAppStore'
+import { useI18n } from '../store/useI18nStore'
 import { Button } from '../components/ui/button'
 import { Dialog, DialogHeader, DialogTitle, DialogClose, DialogContent, DialogFooter } from '../components/ui/Dialog'
 import { toast } from '../store/useToastStore'
 
 export default function NewPage() {
+  const t = useI18n()
   const settings = useAppStore((s) => s.settings)
   const addHistoryItem = useAppStore((s) => s.addHistoryItem)
+  const updateHistoryItem = useAppStore((s) => s.updateHistoryItem)
   const customInstruction = useAppStore((s) => s.customInstruction)
   const setCustomInstruction = useAppStore((s) => s.setCustomInstruction)
   const referenceFiles = useAppStore((s) => s.referenceFiles)
   const addReferenceFile = useAppStore((s) => s.addReferenceFile)
   const updateReferenceFile = useAppStore((s) => s.updateReferenceFile)
   const removeReferenceFile = useAppStore((s) => s.removeReferenceFile)
+  const pinnedRounds = useAppStore((s) => s.pinnedRounds)
+  const removePinnedRound = useAppStore((s) => s.removePinnedRound)
+  const toggleRoundOverride = useAppStore((s) => s.toggleRoundOverride)
+  const updateSettings = useAppStore((s) => s.updateSettings)
 
   // 使用全局工作区状态
   const workspace = useAppStore((s) => s.workspace)
@@ -37,6 +45,8 @@ export default function NewPage() {
   const [showVbaMacro, setShowVbaMacro] = useState(false)
   const [ocrLoading, setOcrLoading] = useState(false)
   const [editingFile, setEditingFile] = useState<{ id: string; name: string; content: string } | null>(null)
+  const [showPinnedDialog, setShowPinnedDialog] = useState(false)
+  const [viewingPinned, setViewingPinned] = useState<typeof pinnedRounds[number] | null>(null)
 
   // Panel collapse states
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -282,7 +292,68 @@ export default function NewPage() {
             </Button>
           </div>
 
-          <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4">
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+            {/* 上下文轮次 + 引用历史对话 */}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-xs font-medium text-zinc-600">{t.context.maxRounds}</label>
+                <span className="text-xs text-zinc-500">
+                  {settings.contextMaxRounds === 0 ? t.context.unlimited : `${settings.contextMaxRounds} ${t.context.rounds}`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={20}
+                value={settings.contextMaxRounds}
+                onChange={(e) => updateSettings({ contextMaxRounds: Number(e.target.value) })}
+                className="h-1 w-full cursor-pointer appearance-none rounded-full bg-zinc-200 accent-violet-500"
+              />
+              <div className="mt-0.5 flex justify-between text-[10px] text-zinc-400">
+                <span>{t.context.unlimited}</span>
+                <span>20</span>
+              </div>
+
+              {/* 引用历史对话按钮 */}
+              <button
+                onClick={() => setShowPinnedDialog(true)}
+                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-zinc-200 py-1.5 text-[11px] text-zinc-500 transition-colors hover:border-violet-300 hover:bg-violet-50/50 hover:text-violet-600"
+              >
+                <BookmarkPlus size={12} />
+                {t.context.pinnedTitle}
+                {pinnedRounds.length > 0 && (
+                  <span className="rounded-full bg-violet-100 px-1.5 text-[10px] font-medium text-violet-600">{pinnedRounds.length}</span>
+                )}
+              </button>
+
+              {pinnedRounds.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {pinnedRounds.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-[10px] text-violet-700"
+                    >
+                      <button
+                        onClick={() => setViewingPinned(p)}
+                        className="flex max-w-[140px] items-center gap-1 truncate hover:underline"
+                        title="点击查看内容"
+                      >
+                        <span className="max-w-[70px] truncate">{p.sourceTitle}</span>
+                        <span className="text-violet-400">·</span>
+                        <span className="max-w-[60px] truncate">{p.userContent.slice(0, 20)}</span>
+                      </button>
+                      <button
+                        onClick={() => removePinnedRound(p.id)}
+                        className="ml-0.5 rounded-full p-0.5 hover:bg-violet-200"
+                      >
+                        <X size={8} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Custom Instruction */}
             <div>
               <label className="mb-2 block text-xs font-medium text-zinc-600">
@@ -292,7 +363,7 @@ export default function NewPage() {
                 value={customInstruction}
                 onChange={(e) => setCustomInstruction(e.target.value)}
                 placeholder="输入长效指令..."
-                className="min-h-[120px] w-full resize-none rounded-xl border-0 bg-zinc-100/80 px-3 py-2.5 text-sm text-zinc-700 placeholder:text-zinc-400 focus:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-300/50"
+                className="min-h-[80px] w-full resize-none rounded-xl border-0 bg-zinc-100/80 px-3 py-2.5 text-sm text-zinc-700 placeholder:text-zinc-400 focus:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-300/50"
               />
             </div>
 
@@ -386,15 +457,28 @@ export default function NewPage() {
           customInstruction={customInstruction}
           referenceFiles={referenceFiles}
           htmlDraft={htmlDraft}
+          contextMaxRounds={settings.contextMaxRounds}
+          roundOverrides={workspace.roundOverrides}
+          pinnedRounds={pinnedRounds}
+          onToggleRound={(idx) => toggleRoundOverride(idx)}
           onHtmlFinalized={(html, report, payload) => {
             updateWorkspace({ htmlDraft: html, finalHtml: html, guardReport: report })
             const title = payload.messages.find((m) => m.role === 'user')?.content?.slice(0, 24) || '新文档'
-            addHistoryItem({
-              title,
-              mode: payload.mode,
-              messages: payload.messages,
-              finalHtml: html,
-            })
+            if (workspace.id) {
+              // 已有对话 → 更新
+              updateHistoryItem(workspace.id, {
+                messages: payload.messages,
+                finalHtml: html,
+              })
+            } else {
+              // 新对话 → 创建
+              addHistoryItem({
+                title,
+                mode: payload.mode,
+                messages: payload.messages,
+                finalHtml: html,
+              })
+            }
           }}
           emptyState={
             <div className="flex h-full flex-col items-center justify-center px-8 text-center">
@@ -595,6 +679,42 @@ export default function NewPage() {
 
       {/* VBA Macro Helper Dialog */}
       <VbaMacroDialog open={showVbaMacro} onClose={() => setShowVbaMacro(false)} />
+
+      {/* 引用历史对话弹窗 */}
+      <PinnedRoundsDialog open={showPinnedDialog} onClose={() => setShowPinnedDialog(false)} />
+
+      {/* 查看固定轮次内容 */}
+      {viewingPinned && (
+        <Dialog open onClose={() => setViewingPinned(null)} className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-sm">{viewingPinned.sourceTitle}</DialogTitle>
+            <DialogClose onClose={() => setViewingPinned(null)} />
+          </DialogHeader>
+          <DialogContent className="max-h-[60vh] space-y-4 overflow-y-auto">
+            <div>
+              <div className="mb-1 text-xs font-medium text-zinc-500">User</div>
+              <div className="whitespace-pre-wrap rounded-lg bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
+                {viewingPinned.userContent}
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium text-zinc-500">Assistant</div>
+              <div className="whitespace-pre-wrap rounded-lg bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
+                {viewingPinned.assistantContent}
+              </div>
+            </div>
+          </DialogContent>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setViewingPinned(null)}>关闭</Button>
+            <Button
+              variant="destructive"
+              onClick={() => { removePinnedRound(viewingPinned.id); setViewingPinned(null) }}
+            >
+              移除引用
+            </Button>
+          </DialogFooter>
+        </Dialog>
+      )}
 
       {/* 参考文件编辑弹窗 */}
       {editingFile && (

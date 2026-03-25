@@ -31,6 +31,8 @@ export const zhCN = {
     noApiKey: '未设置 API Key，无法发送请求。',
     tokens: '消耗 Token',
     generating: '正在生成...',
+    regenerate: '重新生成',
+    continue: '继续生成',
   },
   editor: {
     title: 'HTML 源码',
@@ -157,6 +159,21 @@ export const zhCN = {
     noResults: '无匹配模型',
     fetchedCount: '个可用模型',
     needApiKey: '填写 API Key 后可获取完整模型列表',
+  },
+  context: {
+    maxRounds: '上下文轮次',
+    unlimited: '不限',
+    rounds: '轮',
+    pinnedTitle: '引用历史对话',
+    pinnedEmpty: '可从历史记录中引用特定轮次作为上下文',
+    pinnedCount: '{n} 条引用',
+    pinRound: '固定',
+    unpinRound: '取消固定',
+    pinnedIndicator: '{n} 条引用上下文',
+    roundLabel: '第 {n} 轮',
+    searchHistory: '搜索对话...',
+    selectConversation: '选择一个对话查看轮次',
+    pinnedLimitReached: '最多固定 10 条轮次',
   },
 }
 
