@@ -25,7 +25,7 @@ WordSmith AI 是利用HTML格式，通过严格提示词限制，与AI对话，�
 ### 📥 如何安装
 1.  下载最新版本的 `.exe` 安装包（当前最新：**v1.1.2**）。
 2.  **OCR 功能**需额外导入引擎包，在「设置 → 高级 → OCR 图片识别」中操作：
-    - **本地 OCR**：依次导入 `wordsmith-ocr-engine.zip`（OCR 引擎，约 1.8GB）和 `wordsmith-gpu-pack.zip`（GPU 加速包，约 317MB）。导入后自动启用 DirectML GPU 加速，无 GPU 时自动回退 CPU。
+    - **本地 OCR**：依次导入 `wordsmith-ocr-engine.zip`（OCR 引擎，约 3.9GB）和 `wordsmith-gpu-pack.zip`（GPU 加速包，约 543MB）。导入后自动启用 DirectML GPU 加速，无 GPU 时自动回退 CPU。
     - **云端 OCR**：填写对应服务商的 API Key，选择视觉模型即可使用。
 
 <p align="center">
@@ -67,18 +67,20 @@ npm run build
 
 OCR 引擎不含在安装包中，用户通过「设置 → 高级」导入。
 
-**本地 OCR 流水线（v1.1.2）**：
-- 基于 3 个 ONNX 模型：版面分析（PP-DocLayout）+ 文字检测（PP-OCRv5 det）+ 文字识别（PP-OCRv5 rec）
+**本地 OCR 流水线（v1.1.3）**：
+- 基于 3+2 个 ONNX 模型：版面分析（PP-DocLayout）+ 文字检测（PP-OCRv5 det）+ 文字识别（PP-OCRv5 rec）+ 可选表格单元格检测（RT-DETR-L wired/wireless）
 - GPU 加速：ONNX Runtime + DirectML，支持 NVIDIA / AMD / Intel 全平台显卡
-- 单图耗时约 1.8 ~ 2.4 秒（GPU），无 GPU 自动回退 CPU
+- 后处理增强：数学符号纠错、公式 2D 空间重组（视觉分数线检测）、3 级表格重建回退链（模型 → 形态学 → 聚类）
+- 多页 PDF 支持：基于 PyMuPDF 逐页渲染 OCR
+- 单图耗时约 1.5 ~ 2.4 秒（GPU），无 GPU 自动回退 CPU
 - 核心脚本：`ocr_engine/onnx_pipeline.py`，TypeScript 端通过 `execFile` 调用
 
 **分发包构建**：
 ```powershell
-# OCR 引擎包（~1.8GB）
+# OCR 引擎包（~3.9GB）
 powershell -ExecutionPolicy Bypass -File scripts/pack-ocr-engine.ps1
 
-# GPU 加速包（~317MB）
+# GPU 加速包（~543MB）
 pwsh scripts/prepare-gpu-pack.ps1
 ```
 

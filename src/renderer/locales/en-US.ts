@@ -137,6 +137,15 @@ export const enUS: LocaleResource = {
     localStep3: 'Large file, extraction may take several minutes',
     localStep4: 'Image text recognition will be available after import',
   },
+  pdf: {
+    processing: 'Processing PDF...',
+    processingPage: 'Processing page {current}/{total}',
+    convertFailed: 'PDF conversion failed',
+    ocrFailed: 'PDF OCR recognition failed',
+    tooManyPages: 'Too many pages in PDF',
+    success: 'PDF recognition complete',
+    successDesc: '{total} pages processed, results added to reference files',
+  },
   modelSelector: {
     searchPlaceholder: 'Search models...',
     recentGroup: 'Recently Used',

@@ -1,6 +1,17 @@
-[简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md) 
+[简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
-## v1.1.2 (Current)
+## v1.1.3 (Current)
+### Added
+- Added table structure enhancement: integrated RT-DETR-L wired/wireless table cell detection models (`table_wired_det.onnx` + `table_wireless_det.onnx`), 3-level fallback chain (model detection → morphological grid → coordinate clustering), significantly improved complex table reconstruction
+- Added OCR post-processing enhancements: math symbol regex corrector (`sn→sin`, `coS→cos`, `tg→tan`, etc.), formula region 2D spatial reconstruction (block merging + OpenCV visual fraction bar detection + `\frac` output), OpenCV morphological table grid extraction
+- Added multi-page PDF support: renders PDF pages to PNG via PyMuPDF and OCR-processes them, with merged results added to reference files (max 50 pages)
+- Added table detection model conversion script `scripts/convert_table_det.py` (supports PIR format)
+### Changed
+- Removed deprecated `FormulaRecognizer` class (~130 lines) and cleaned up related references (all formula recognition models use autoregressive architecture, incompatible with DirectML)
+- Accelerated zip extraction: prioritizes native Windows `tar.exe` over pure JS `extract-zip`, several times faster
+- Updated OCR technical documentation with comprehensive formula recognition model research conclusions
+
+## v1.1.2
 ### Added
 - Added OCR support for GPU inference acceleration using ```DirectML```, with universal compatibility for the Windows platform.
 ### Changed

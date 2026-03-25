@@ -275,7 +275,7 @@ export interface OnnxModelStatus {
 // ---------------------------------------------------------------------------
 
 /** 流水线所需的模型文件（哨兵: layout_det.onnx）
- *  注意: formula_rec.onnx 为可选（体积大且推理慢），不列入必选 */
+/** 流水线必需文件（表格检测模型 table_wired_det/table_wireless_det 为可选增强，不列入） */
 const PIPELINE_REQUIRED_FILES = [
   'layout_det.onnx',
   'text_det.onnx',

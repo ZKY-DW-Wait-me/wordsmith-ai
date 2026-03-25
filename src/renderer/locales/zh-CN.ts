@@ -135,6 +135,15 @@ export const zhCN = {
     localStep3: '文件较大，解压导入需要数分钟，请耐心等待',
     localStep4: '导入完成后即可使用图片文字识别功能',
   },
+  pdf: {
+    processing: '正在处理 PDF...',
+    processingPage: '正在处理第 {current}/{total} 页',
+    convertFailed: 'PDF 转换失败',
+    ocrFailed: 'PDF OCR 识别失败',
+    tooManyPages: 'PDF 页数过多',
+    success: 'PDF 识别完成',
+    successDesc: '共 {total} 页，识别结果已添加到参考文件',
+  },
   modelSelector: {
     searchPlaceholder: '搜索模型...',
     recentGroup: '最近使用',

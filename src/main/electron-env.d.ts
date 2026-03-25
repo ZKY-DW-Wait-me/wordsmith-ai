@@ -89,6 +89,15 @@ interface Window {
         error?: string
       }>
     }
+    pdf: {
+      toImages: (pdfPath: string) => Promise<{
+        success: boolean
+        pages?: string[]
+        pageCount?: number
+        error?: string
+      }>
+      cleanup: () => Promise<void>
+    }
     accel: {
       getStatus: () => Promise<AcceleratorStatus>
       checkDx12: () => Promise<{

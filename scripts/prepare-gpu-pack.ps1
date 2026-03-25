@@ -31,6 +31,11 @@ $requiredModels = @(
     "text_rec.onnx",
     "ppocr_keys_v1.txt"
 )
+# 可选增强模型（不存在不报错）
+$optionalModels = @(
+    "table_wired_det.onnx",
+    "table_wireless_det.onnx"
+)
 
 Write-Host "=== WordSmith AI GPU 加速包构建工具（模块化 OCR 流水线）==="
 Write-Host ""
@@ -72,7 +77,18 @@ if ($missingModels.Count -gt 0) {
     Write-Host "请运行转换脚本: python scripts/convert_paddle_to_onnx.py" -ForegroundColor Yellow
     exit 1
 }
-Write-Host "      所有模型文件就绪。"
+Write-Host "      所有必需模型文件就绪。"
+
+# 检查可选增强模型
+foreach ($model in $optionalModels) {
+    $modelPath = Join-Path $onnxModelDir $model
+    if (Test-Path $modelPath) {
+        $size = [math]::Round((Get-Item $modelPath).Length / 1MB, 1)
+        Write-Host "      [OK] $model ($size MB) (可选增强)"
+    } else {
+        Write-Host "      [--] $model 未找到 (可选，跳过)" -ForegroundColor DarkGray
+    }
+}
 
 # -------------------------------------------------------
 # 2. 下载 ONNX Runtime DirectML NuGet 包
@@ -185,6 +201,13 @@ robocopy $onnxModelDir $destModels /E /NFL /NDL /NJH /NJS /NC /NS /NP /XF "formu
 foreach ($model in $requiredModels) {
     $size = [math]::Round((Get-Item (Join-Path $onnxModelDir $model)).Length / 1MB, 1)
     Write-Host "      + onnx_models/pipeline/$model ($size MB)"
+}
+foreach ($model in $optionalModels) {
+    $modelPath = Join-Path $onnxModelDir $model
+    if (Test-Path $modelPath) {
+        $size = [math]::Round((Get-Item $modelPath).Length / 1MB, 1)
+        Write-Host "      + onnx_models/pipeline/$model ($size MB) (增强)"
+    }
 }
 
 # site-packages/ 目录 — 放 onnxruntime-directml Python 包

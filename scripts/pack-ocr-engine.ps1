@@ -76,6 +76,20 @@ if (Test-Path $onnxPipeline) {
     Copy-Item $onnxPipeline (Join-Path $destEngine "onnx_pipeline.py")
 }
 
+# Copy pdf_converter.py (PDF → PNG 转换脚本)
+$pdfConverter = Join-Path $sourceDir "pdf_converter.py"
+if (Test-Path $pdfConverter) {
+    Write-Host "Copying pdf_converter.py..."
+    Copy-Item $pdfConverter (Join-Path $destEngine "pdf_converter.py")
+}
+
+# Copy onnx_models/ (ONNX 流水线模型，排除废弃的 formula_rec.onnx 和 tokenizer)
+$onnxModelsDir = Join-Path $sourceDir "onnx_models"
+if (Test-Path $onnxModelsDir) {
+    Write-Host "Copying onnx_models/..."
+    robocopy $onnxModelsDir (Join-Path $destEngine "onnx_models") /E /XF "formula_rec.onnx" "formula_tokenizer.json" /XD "PaddleOCR-VL-0.9B" "_temp_old_format" /NFL /NDL /NJH /NJS /NC /NS /NP
+}
+
 # Copy requirements.txt if exists
 $requirements = Join-Path $sourceDir "requirements.txt"
 if (Test-Path $requirements) {

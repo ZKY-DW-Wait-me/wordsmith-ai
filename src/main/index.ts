@@ -2,9 +2,45 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { mkdir, rm, rename, readdir, copyFile, cp, access, constants as fsConst } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { tmpdir } from 'node:os'
 import extract from 'extract-zip'
 import { CpuOcrProvider, OnnxPipelineProvider, AccelerationManager, type OcrResult, type OcrEngineStatus, type OnnxModelStatus, type AcceleratorStatus, type GpuPackStatus } from './ocr-provider'
 import { VlmProvider, type VlmOcrConfig } from './vlm-provider'
+
+// ---------------------------------------------------------------------------
+// 快速解压: 优先用 Windows 原生 tar.exe（C 二进制，比纯 JS yauzl 快数倍）
+// ---------------------------------------------------------------------------
+const SYSTEM_TAR = 'C:\\Windows\\System32\\tar.exe'
+
+async function fastExtract(zipPath: string, destDir: string): Promise<void> {
+  // 检测系统 tar.exe 是否存在
+  try {
+    await access(SYSTEM_TAR, fsConst.R_OK)
+  } catch {
+    // 无系统 tar，回退纯 JS 解压
+    await extract(zipPath, { dir: destDir })
+    return
+  }
+
+  // 用系统 tar.exe 解压（Windows 10 1803+ 自带，支持 zip 格式）
+  return new Promise((resolve, reject) => {
+    execFile(
+      SYSTEM_TAR,
+      ['-xf', zipPath, '-C', destDir],
+      { timeout: 600000, maxBuffer: 10 * 1024 * 1024 },
+      (error) => {
+        if (error) {
+          // tar 失败（极罕见），回退纯 JS
+          console.warn('[fastExtract] tar.exe failed, falling back to extract-zip:', error.message)
+          extract(zipPath, { dir: destDir }).then(resolve).catch(reject)
+        } else {
+          resolve()
+        }
+      },
+    )
+  })
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -166,8 +202,8 @@ ipcMain.handle('ocr:importEngineZip', async (_event, zipPath: string): Promise<{
     // 2. Create temp directory
     await mkdir(tempDir, { recursive: true })
 
-    // 3. Extract zip to temp
-    await extract(zipPath, { dir: tempDir })
+    // 3. Extract zip to temp (优先用系统 tar.exe 加速)
+    await fastExtract(zipPath, tempDir)
 
     // 4. Resolve the actual engine root (find python/ + paddlex_home/)
     const engineRoot = await resolveEngineRoot(tempDir)
@@ -218,7 +254,7 @@ ipcMain.handle('ocr:importEngineZip', async (_event, zipPath: string): Promise<{
  * 生产模式: resources/ocr-scripts/
  * 开发模式: 项目根目录 ocr_engine/
  */
-const OCR_SCRIPTS = ['onnx_engine.py', 'hw_accel.py', 'onnx_pipeline.py']
+const OCR_SCRIPTS = ['onnx_engine.py', 'hw_accel.py', 'onnx_pipeline.py', 'pdf_converter.py']
 
 async function ensureOcrScripts(enginePath: string): Promise<void> {
   const scriptsSource = VITE_DEV_SERVER_URL
@@ -273,6 +309,79 @@ async function resolveEngineRoot(tempDir: string): Promise<string | null> {
   return null
 }
 
+// PDF → 图片转换 IPC
+let pdfTempDir: string | null = null
+
+ipcMain.handle('pdf:toImages', async (_event, pdfPath: string): Promise<{
+  success: boolean
+  pages?: string[]
+  pageCount?: number
+  error?: string
+}> => {
+  // 查找 Python 和 pdf_converter.py
+  const enginePath = onnxPipelineProvider.getEnginePath()
+  if (!enginePath) {
+    return { success: false, error: 'OCR 引擎未安装，无法转换 PDF。' }
+  }
+
+  const pythonExe = path.join(enginePath, 'python', 'python.exe')
+  const scriptPath = path.join(enginePath, 'pdf_converter.py')
+
+  try {
+    await access(pythonExe, fsConst.R_OK)
+  } catch {
+    return { success: false, error: 'Python 运行时未找到。' }
+  }
+  try {
+    await access(scriptPath, fsConst.R_OK)
+  } catch {
+    return { success: false, error: 'pdf_converter.py 脚本未找到。' }
+  }
+
+  // 创建临时目录
+  const tempBase = path.join(tmpdir(), 'wordsmith-pdf')
+  const outputDir = path.join(tempBase, `pdf_${Date.now()}`)
+  await mkdir(outputDir, { recursive: true })
+  pdfTempDir = outputDir
+
+  const sitePackages = path.join(enginePath, 'site-packages')
+
+  return new Promise((resolve) => {
+    execFile(
+      pythonExe,
+      [scriptPath, pdfPath, '--output-dir', outputDir],
+      {
+        env: { ...process.env, PYTHONPATH: sitePackages },
+        timeout: 300000, // 5 分钟
+        maxBuffer: 10 * 1024 * 1024,
+      },
+      (error, stdout, stderr) => {
+        if (stderr) {
+          console.log(`[PDF] stderr: ${stderr}`)
+        }
+        if (error) {
+          console.error(`[PDF] execFile error:`, error.message)
+          resolve({ success: false, error: `PDF 转换失败: ${error.message}` })
+          return
+        }
+        try {
+          const result = JSON.parse(stdout.trim())
+          resolve(result)
+        } catch {
+          resolve({ success: false, error: `PDF 输出解析失败: ${stdout.slice(0, 200)}` })
+        }
+      },
+    )
+  })
+})
+
+ipcMain.handle('pdf:cleanup', async (): Promise<void> => {
+  if (pdfTempDir) {
+    await rm(pdfTempDir, { recursive: true, force: true }).catch(() => {})
+    pdfTempDir = null
+  }
+})
+
 // Acceleration IPC
 ipcMain.handle('accel:getStatus', async (): Promise<AcceleratorStatus> => {
   return accelManager.getStatus()
@@ -307,7 +416,7 @@ ipcMain.handle('accel:importPatchZip', async (_event, zipPath: string): Promise<
     await mkdir(tempDir, { recursive: true })
 
     // 3. 解压 zip
-    await extract(zipPath, { dir: tempDir })
+    await fastExtract(zipPath, tempDir)
 
     // 4. 查找含 DirectML.dll 的根目录
     const accelRoot = await resolveAcceleratorRoot(tempDir)
@@ -381,7 +490,7 @@ ipcMain.handle('onnx:importModelZip', async (_event, zipPath: string): Promise<{
     await mkdir(tempDir, { recursive: true })
 
     // 3. 解压 zip
-    await extract(zipPath, { dir: tempDir })
+    await fastExtract(zipPath, tempDir)
 
     // 4. 查找含 layout_det.onnx（流水线哨兵）的根目录
     const modelRoot = await resolveOnnxModelRoot(tempDir)
@@ -472,7 +581,7 @@ ipcMain.handle('gpu:importPack', async (_event, zipPath: string): Promise<{ succ
     await mkdir(tempDir, { recursive: true })
 
     // 2. 解压 zip
-    await extract(zipPath, { dir: tempDir })
+    await fastExtract(zipPath, tempDir)
 
     // 3. 在解压内容中搜索 DLL 目录（含 DirectML.dll）、模型目录（含 layout_det.onnx）和 site-packages 目录
     const dllRoot = await findFileRecursive(tempDir, 'DirectML.dll', 3)

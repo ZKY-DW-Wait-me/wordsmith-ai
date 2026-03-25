@@ -61,12 +61,84 @@ export default function NewPage() {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase()
     return IMAGE_EXTENSIONS.includes(ext)
   }
+  const isPdfFile = (file: File) => {
+    return file.name.toLowerCase().endsWith('.pdf')
+  }
+
+  const processPdf = async (file: File) => {
+    const filePath = (file as File & { path?: string }).path
+    if (!filePath) {
+      toast({ title: 'PDF 处理失败', description: '无法获取文件路径，请确认在 Electron 环境中运行。', variant: 'destructive' })
+      return
+    }
+    if (!window.wordsmith?.pdf?.toImages) {
+      toast({ title: 'PDF 功能不可用', description: 'PDF 转换功能未就绪。', variant: 'destructive' })
+      return
+    }
+    if (!window.wordsmith?.ocr?.recognize) {
+      toast({ title: 'OCR 不可用', description: 'OCR 功能未就绪，请检查嵌入式 Python 环境。', variant: 'destructive' })
+      return
+    }
+
+    setOcrLoading(true)
+    try {
+      // 1. PDF → 图片
+      toast({ title: '正在转换 PDF...', variant: 'default', duration: 60000 })
+      const pdfResult = await window.wordsmith.pdf.toImages(filePath)
+      if (!pdfResult.success || !pdfResult.pages) {
+        toast({ title: 'PDF 转换失败', description: pdfResult.error || '未知错误', variant: 'destructive' })
+        return
+      }
+
+      const totalPages = pdfResult.pageCount ?? pdfResult.pages.length
+      const vlmConfig = settings.ocrMode === 'vlm' ? settings.vlmOcr : null
+
+      // 2. 逐页 OCR
+      const allMarkdown: string[] = []
+      for (let i = 0; i < pdfResult.pages.length; i++) {
+        toast({
+          title: `正在处理第 ${i + 1}/${totalPages} 页`,
+          variant: 'default',
+          duration: 60000,
+        })
+        const ocrResult = await window.wordsmith.ocr.recognize(pdfResult.pages[i], vlmConfig)
+        if (ocrResult.success && ocrResult.markdown) {
+          allMarkdown.push(`<!-- 第 ${i + 1} 页 -->\n${ocrResult.markdown}`)
+        }
+      }
+
+      // 3. 合并结果
+      if (allMarkdown.length > 0) {
+        addReferenceFile({
+          name: `[PDF] ${file.name}`,
+          content: allMarkdown.join('\n\n---\n\n'),
+        })
+        toast({
+          title: 'PDF 识别完成',
+          description: `共 ${totalPages} 页，识别结果已添加到参考文件`,
+          variant: 'success',
+          duration: 5000,
+        })
+      } else {
+        toast({ title: 'PDF OCR 识别失败', description: '未能从 PDF 中识别出文字。', variant: 'destructive' })
+      }
+
+      // 4. 清理临时文件
+      await window.wordsmith.pdf.cleanup().catch(() => {})
+    } catch {
+      toast({ title: 'PDF 处理失败', description: '处理 PDF 时发生异常。', variant: 'destructive' })
+    } finally {
+      setOcrLoading(false)
+    }
+  }
 
   const processFiles = async (files: FileList | File[]) => {
     for (const file of Array.from(files)) {
       if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
         const content = await file.text()
         addReferenceFile({ name: file.name, content })
+      } else if (isPdfFile(file)) {
+        await processPdf(file)
       } else if (isImageFile(file)) {
         const filePath = (file as File & { path?: string }).path
         if (!filePath) {
@@ -233,7 +305,7 @@ export default function NewPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.md,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp"
+                accept=".txt,.md,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.webp,.pdf"
                 multiple
                 onChange={handleFileUpload}
                 className="hidden"

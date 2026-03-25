@@ -1,6 +1,17 @@
-[简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md) 
+[简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
-## v1.1.2 (Current)
+## v1.1.3 (Current)
+### Added
+- 新增表格结构增强：接入 RT-DETR-L 有线/无线表格单元格检测模型（`table_wired_det.onnx` + `table_wireless_det.onnx`），3 级回退链（模型检测 → 形态学网格 → 坐标聚类），复杂表格重建精度显著提升
+- 新增 OCR 后处理增强：数学符号正则纠错器（`sn→sin`, `coS→cos`, `tg→tan` 等）、公式区域 2D 空间重组（整块合并 + OpenCV 视觉分数线检测 + `\frac` 输出）、OpenCV 形态学表格网格提取
+- 新增多页 PDF 支持：基于 PyMuPDF 逐页渲染 PNG 并 OCR 识别，合并结果添加到参考文件（最大 50 页）
+- 新增表格检测模型转换脚本 `scripts/convert_table_det.py`（支持 PIR 格式）
+### Changed
+- 删除废弃的 `FormulaRecognizer` 类（~130 行），清理相关引用（公式识别模型均为自回归架构，DirectML 不可用）
+- 解压导入加速：优先使用 Windows 原生 `tar.exe` 替代纯 JS `extract-zip`，速度提升数倍
+- 更新 OCR 技术文档，新增公式识别模型全面调研结论
+
+## v1.1.2
 ### Added
 - 新增OCR支持使用GPU推理加速，使用```DirectML```，对windows平台具有通用性
 ### Changed

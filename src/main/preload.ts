@@ -30,6 +30,14 @@ contextBridge.exposeInMainWorld('wordsmith', {
       return ipcRenderer.invoke('ocr:importEngineZip', zipFilePath)
     },
   },
+  pdf: {
+    toImages(pdfPath: string) {
+      return ipcRenderer.invoke('pdf:toImages', pdfPath)
+    },
+    cleanup() {
+      return ipcRenderer.invoke('pdf:cleanup')
+    },
+  },
   accel: {
     getStatus() {
       return ipcRenderer.invoke('accel:getStatus')
