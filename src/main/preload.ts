@@ -5,6 +5,15 @@ contextBridge.exposeInMainWorld('wordsmith', {
     write(payload: { html: string; text: string }) {
       return ipcRenderer.invoke('clipboard:write', payload)
     },
+    writeImage(dataUrl: string) {
+      return ipcRenderer.invoke('clipboard:writeImage', dataUrl)
+    },
+    captureArea(rect: { x: number; y: number; width: number; height: number }, transparent?: boolean) {
+      return ipcRenderer.invoke('clipboard:captureArea', rect, transparent)
+    },
+    captureAreaAsDataUrl(rect: { x: number; y: number; width: number; height: number }) {
+      return ipcRenderer.invoke('clipboard:captureAreaAsDataUrl', rect) as Promise<string>
+    },
   },
   models: {
     fetch(url: string, apiKey: string) {

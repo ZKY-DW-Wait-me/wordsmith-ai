@@ -5,6 +5,7 @@ import NewPage from './pages/New'
 import HistoryPage from './pages/History'
 import SettingsPage from './pages/Settings'
 import HelpPage from './pages/Help'
+import LatexPage from './pages/Latex'
 import { OnboardingModal } from './components/business/OnboardingModal'
 import { Toaster } from './components/ui/Toaster'
 import { GlobalSidebar } from './components/business/GlobalSidebar'
@@ -48,6 +49,7 @@ function App() {
       <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
         <Routes>
           <Route path="/" element={<NewPage />} />
+          <Route path="/latex" element={<LatexPage />} />
           <Route path="/history" element={<PageLayout><HistoryPage /></PageLayout>} />
           <Route path="/settings" element={<PageLayout><SettingsPage /></PageLayout>} />
           <Route path="/help" element={<PageLayout><HelpPage /></PageLayout>} />

@@ -60,6 +60,9 @@ interface Window {
   wordsmith?: {
     clipboard: {
       write: (payload: { html: string; text: string }) => Promise<void>
+      writeImage: (dataUrl: string) => Promise<void>
+      captureArea: (rect: { x: number; y: number; width: number; height: number }, transparent?: boolean) => Promise<boolean>
+      captureAreaAsDataUrl: (rect: { x: number; y: number; width: number; height: number }) => Promise<string>
     }
     models: {
       fetch: (url: string, apiKey: string) => Promise<{

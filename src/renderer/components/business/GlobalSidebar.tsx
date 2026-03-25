@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { FilePlus2, Clock, Settings, HelpCircle, Sparkles, Plus } from 'lucide-react'
+import { FilePlus2, Clock, Settings, HelpCircle, Sparkles, Plus, Sigma } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useAppStore } from '../../store/useAppStore'
 
 const NAV_ITEMS = [
   { to: '/', icon: FilePlus2, label: '主页' },
+  { to: '/latex', icon: Sigma, label: '公式' },
   { to: '/history', icon: Clock, label: '历史' },
   { to: '/settings', icon: Settings, label: '设置' },
   { to: '/help', icon: HelpCircle, label: '帮助' },

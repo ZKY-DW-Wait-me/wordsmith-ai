@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { mkdir, rm, rename, readdir, copyFile, cp, access, constants as fsConst } from 'node:fs/promises'
@@ -109,6 +109,41 @@ ipcMain.handle('clipboard:write', async (_event, payload: { html: string; text: 
     html: payload.html,
     text: payload.text,
   })
+})
+
+ipcMain.handle('clipboard:writeImage', async (_event, dataUrl: string) => {
+  const image = nativeImage.createFromDataURL(dataUrl)
+  clipboard.writeImage(image)
+})
+
+ipcMain.handle('clipboard:captureArea', async (event, rect: { x: number; y: number; width: number; height: number }, transparent?: boolean) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return false
+  const image = await win.webContents.capturePage(rect)
+  if (transparent) {
+    // 白色/近白色像素设为透明（BGRA 格式）
+    const size = image.getSize()
+    const bitmap = image.toBitmap()
+    for (let i = 0; i < bitmap.length; i += 4) {
+      const b = bitmap[i], g = bitmap[i + 1], r = bitmap[i + 2]
+      if (r > 240 && g > 240 && b > 240) {
+        bitmap[i + 3] = 0
+      }
+    }
+    const result = nativeImage.createFromBitmap(Buffer.from(bitmap), { width: size.width, height: size.height })
+    clipboard.writeImage(result)
+  } else {
+    clipboard.writeImage(image)
+  }
+  return true
+})
+
+// 截取区域并返回 data URL（不写入剪贴板，用于渲染器侧后处理）
+ipcMain.handle('clipboard:captureAreaAsDataUrl', async (event, rect: { x: number; y: number; width: number; height: number }) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) throw new Error('No window')
+  const image = await win.webContents.capturePage(rect)
+  return image.toDataURL()
 })
 
 // Models fetch IPC — 在主进程发起 HTTP 请求，绕过渲染进程 CORS 限制
