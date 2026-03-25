@@ -1,5 +1,21 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
+
+> **Version Numbering**: Release versions use `vX.Y.Z`, beta branches use `vX.Y.Z-<feature>.N` to distinguish feature lines. Merged to main as the next release version.
+
+## v1.1.4-context.1 (beta/smart-context)
+### Added
+- Added context round slider (0=unlimited, max 20 rounds) to control the number of historical conversation rounds sent to AI, reducing token consumption
+- Added per-round checkbox: each completed round displays a toggle control for manual include/exclude, overriding default window rules
+- Added pinned history rounds: select conversation rounds from history as cross-session context snapshots, stored independently from history records
+- Added pinned rounds dialog: left panel with history list + search, right panel with round preview + per-round pin controls
+- Added regenerate button: click to regenerate the last AI reply
+- Added continue generation button: auto-detected when AI output is interrupted, appends content to existing reply (no new bubble)
+- Added context filter engine `context-filter.ts` with 14 unit tests
+### Fixed
+- Fixed chat panel input box being clipped at window bottom (`h-full` → `flex-1 min-h-0`)
+- Fixed left sidebar new sections crowding custom instruction and reference document space
+
 ## v1.1.3 (Current)
 ### Added
 - Added table structure enhancement: integrated RT-DETR-L wired/wireless table cell detection models (`table_wired_det.onnx` + `table_wireless_det.onnx`), 3-level fallback chain (model detection → morphological grid → coordinate clustering), significantly improved complex table reconstruction

@@ -21,6 +21,15 @@ WordSmith AI is a convenient formatting tool that leverages HTML format and stri
 
 Recognition results support manual correction. Users can directly upload or drag-and-drop images for text recognition.
 
+### Smart Context Control (beta)
+
+Fine-grained control over the conversation context sent to AI, optimizing formatting quality and saving tokens:
+
+- **Round Slider**: Set the most recent N rounds (0~20) of conversation to participate in AI reasoning, unlimited by default
+- **Per-round Toggle**: Each completed round has a checkbox to manually include/exclude, overriding the default window rule
+- **Pin History Rounds**: Pin valuable conversation snippets from history as cross-session context snapshots, stored independently — deleting history does not affect pinned rounds
+- **Regenerate / Continue**: Regenerate the last AI reply or continue from where it was interrupted
+
 ### 📥 Installation Instructions
 1. Download the latest version of the .exe installer (Current latest: **v1.1.2**).
 2. **OCR functionality** requires additional engine packages, configured in "Settings → Advanced → OCR Image Recognition":
