@@ -302,7 +302,7 @@ export default function SettingsPage() {
                     try {
                       const info = await checkForUpdate()
                       if (info) {
-                        useUpdateStore.getState().setUpdateInfo(info)
+                        useUpdateStore.getState().setUpdateInfo(info, true)
                       } else {
                         toast({ title: t.update.upToDate, variant: 'success' })
                       }
