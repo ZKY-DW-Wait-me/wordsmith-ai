@@ -171,5 +171,6 @@ export const zhCN = {
     checkNow: '检查更新',
     skip: '跳过此版本',
   },
+}
 
 export type LocaleResource = typeof zhCN

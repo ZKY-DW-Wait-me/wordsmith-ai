@@ -173,3 +173,4 @@ export const enUS: LocaleResource = {
     checkNow: 'Check for Updates',
     skip: 'Skip This Version',
   },
+}
