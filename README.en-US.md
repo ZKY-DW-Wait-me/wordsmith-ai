@@ -26,8 +26,12 @@ Recognition results support manual correction. Users can directly upload or drag
 Automatically checks for new versions on startup:
 
 - Displays new version number, release date, and changelog
+- Supports "Remind Me Later" (no popup for 3 days) and "Skip This Version" (never popup for same version)
 - Shows an extra warning if OCR engine architecture has changed, reminding users to re-import OCR engine packs after updating
+- Red dot indicator on sidebar settings icon (disappears after user takes action)
+- View current version and update details in Settings "General" tab, with manual check button
 - User data and OCR engine are preserved during overlay installation, no reconfiguration needed
+- Opens download link in system default browser
 
 ### 📥 Installation Instructions
 1. Download the latest version of the .exe installer (Current latest: **v1.1.2**).

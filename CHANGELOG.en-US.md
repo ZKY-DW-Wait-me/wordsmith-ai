@@ -6,8 +6,12 @@
 ## v1.1.4-updater.1 (beta/updater)
 ### Added
 - Added version update detection: automatically checks remote API on startup, prompts user when a new version is available
-- Added update modal: displays new version number, release date, and changelog, redirects to GitHub Release on confirm
+- Added update modal with three actions: "Go to Download", "Remind Me Later", and "Skip This Version"
 - Added OCR architecture change warning: when remote `ocrchange` is `1`, shows extra warning that OCR engine packs need to be re-imported after update
+- Added red dot indicator on sidebar settings icon, disappears after user takes action (later/skip)
+- Added "About & Updates" card in Settings "General" tab: current version, update details, manual "Check for Updates" button
+- Added `window:openExternal` IPC channel to open download links in system default browser
+- Added anti-annoyance mechanism: "Remind Later" suppresses popup for 3 days, "Skip Version" permanently skips same version, persisted in localStorage
 - Injected `__APP_VERSION__` via Vite `define` for runtime version comparison
 ### Fixed
 - User data (settings, history) and OCR engine are automatically preserved during overlay installation
