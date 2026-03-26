@@ -92,5 +92,8 @@ contextBridge.exposeInMainWorld('wordsmith', {
       ipcRenderer.on('window:maximized', handler)
       return () => ipcRenderer.removeListener('window:maximized', handler)
     },
+    openExternal(url: string) {
+      return ipcRenderer.invoke('window:openExternal', url)
+    },
   },
 })

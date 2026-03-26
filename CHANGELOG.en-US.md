@@ -16,6 +16,19 @@
 - Fixed chat panel input box being clipped at window bottom (`h-full` → `flex-1 min-h-0`)
 - Fixed left sidebar new sections crowding custom instruction and reference document space
 
+## v1.1.4-updater.1 (beta/updater)
+### Added
+- Added version update detection: automatically checks remote API on startup, prompts user when a new version is available
+- Added update modal with three actions: "Go to Download", "Remind Me Later", and "Skip This Version"
+- Added OCR architecture change warning: when remote `ocrchange` is `1`, shows extra warning that OCR engine packs need to be re-imported after update
+- Added red dot indicator on sidebar settings icon, disappears after user takes action (later/skip)
+- Added "About & Updates" card in Settings "General" tab: current version, update details, manual "Check for Updates" button
+- Added `window:openExternal` IPC channel to open download links in system default browser
+- Added anti-annoyance mechanism: "Remind Later" suppresses popup for 3 days, "Skip Version" permanently skips same version, persisted in localStorage
+- Injected `__APP_VERSION__` via Vite `define` for runtime version comparison
+### Fixed
+- User data (settings, history) and OCR engine are automatically preserved during overlay installation
+
 ## v1.1.3 (Current)
 ### Added
 - Added table structure enhancement: integrated RT-DETR-L wired/wireless table cell detection models (`table_wired_det.onnx` + `table_wireless_det.onnx`), 3-level fallback chain (model detection → morphological grid → coordinate clustering), significantly improved complex table reconstruction

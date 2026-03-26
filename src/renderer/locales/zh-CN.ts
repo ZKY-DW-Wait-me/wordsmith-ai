@@ -175,6 +175,19 @@ export const zhCN = {
     selectConversation: '选择一个对话查看轮次',
     pinnedLimitReached: '最多固定 10 条轮次',
   },
+  update: {
+    title: '发现新版本',
+    newVersion: '最新版本',
+    changelog: '更新内容',
+    ocrWarning: '本次更新涉及 OCR 引擎架构变更，更新后需重新导入 OCR 引擎包和 GPU 加速包。',
+    download: '前往下载',
+    later: '稍后提醒',
+    aboutTitle: '版本与更新',
+    currentVersion: '当前版本',
+    upToDate: '已是最新版本',
+    checkNow: '检查更新',
+    skip: '跳过此版本',
+  },
 }
 
 export type LocaleResource = typeof zhCN

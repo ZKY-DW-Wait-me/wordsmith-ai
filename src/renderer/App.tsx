@@ -9,10 +9,24 @@ import { OnboardingModal } from './components/business/OnboardingModal'
 import { Toaster } from './components/ui/Toaster'
 import { GlobalSidebar } from './components/business/GlobalSidebar'
 import { PageLayout } from './layouts/PageLayout'
+import { UpdateModal } from './components/business/UpdateModal'
+import { checkForUpdate } from './services/UpdateService'
+import { useUpdateStore } from './store/useUpdateStore'
 
 function App() {
   const eyeCareMode = useAppStore((s) => s.settings.eyeCareMode)
   const ocrEnginePath = useAppStore((s) => s.settings.ocrEnginePath)
+  const updateInfo = useUpdateStore((s) => s.updateInfo)
+  const showModal = useUpdateStore((s) => s.showModal)
+  const setUpdateInfo = useUpdateStore((s) => s.setUpdateInfo)
+  const dismissUpdate = useUpdateStore((s) => s.dismiss)
+
+  // 启动时异步检测版本更新
+  useEffect(() => {
+    checkForUpdate().then((info) => {
+      if (info) setUpdateInfo(info)
+    })
+  }, [setUpdateInfo])
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -40,6 +54,7 @@ function App() {
     <div className="flex h-full w-full bg-zinc-50">
       <OnboardingModal />
       <Toaster />
+      {updateInfo && showModal && <UpdateModal info={updateInfo} onClose={dismissUpdate} />}
 
       {/* Global Navigation Sidebar - extends to top */}
       <GlobalSidebar />
