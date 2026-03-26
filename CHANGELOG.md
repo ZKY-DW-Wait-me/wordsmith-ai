@@ -1,5 +1,17 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
+
+> **版本号规范**：正式版使用 `vX.Y.Z`，测试分支使用 `vX.Y.Z-<feature>.N` 区分功能线。合入 main 后作为下一个正式版发布。
+
+## v1.1.4-updater.1 (beta/updater)
+### Added
+- 新增版本更新检测：程序启动时自动访问远端 API 对比版本号，发现新版本弹窗提示
+- 新增更新弹窗：显示新版本号、更新日期、更新内容，用户确认后跳转 GitHub Release 下载
+- 新增 OCR 架构变更提示：远端 JSON 中 `ocrchange` 为 `1` 时，弹窗额外警告用户更新后需重新导入 OCR 引擎包
+- 通过 Vite `define` 注入 `__APP_VERSION__`，运行时动态获取当前版本号
+### Fixed
+- 覆盖安装时用户数据（设置、历史记录）和 OCR 引擎自动保留，无需重新配置
+
 ## v1.1.3 (Current)
 ### Added
 - 新增表格结构增强：接入 RT-DETR-L 有线/无线表格单元格检测模型（`table_wired_det.onnx` + `table_wireless_det.onnx`），3 级回退链（模型检测 → 形态学网格 → 坐标聚类），复杂表格重建精度显著提升

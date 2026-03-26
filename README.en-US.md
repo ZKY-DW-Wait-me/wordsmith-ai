@@ -21,6 +21,14 @@ WordSmith AI is a convenient formatting tool that leverages HTML format and stri
 
 Recognition results support manual correction. Users can directly upload or drag-and-drop images for text recognition.
 
+### Update Detection (beta)
+
+Automatically checks for new versions on startup:
+
+- Displays new version number, release date, and changelog
+- Shows an extra warning if OCR engine architecture has changed, reminding users to re-import OCR engine packs after updating
+- User data and OCR engine are preserved during overlay installation, no reconfiguration needed
+
 ### 📥 Installation Instructions
 1. Download the latest version of the .exe installer (Current latest: **v1.1.2**).
 2. **OCR functionality** requires additional engine packages, configured in "Settings → Advanced → OCR Image Recognition":

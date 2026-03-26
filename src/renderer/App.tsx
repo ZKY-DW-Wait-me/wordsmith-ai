@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import { useAppStore } from './store/useAppStore'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import NewPage from './pages/New'
 import HistoryPage from './pages/History'
 import SettingsPage from './pages/Settings'
@@ -9,10 +9,17 @@ import { OnboardingModal } from './components/business/OnboardingModal'
 import { Toaster } from './components/ui/Toaster'
 import { GlobalSidebar } from './components/business/GlobalSidebar'
 import { PageLayout } from './layouts/PageLayout'
+import { UpdateModal } from './components/business/UpdateModal'
+import { checkForUpdate, type UpdateInfo } from './services/UpdateService'
 
 function App() {
   const eyeCareMode = useAppStore((s) => s.settings.eyeCareMode)
   const ocrEnginePath = useAppStore((s) => s.settings.ocrEnginePath)
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+
+  useEffect(() => {
+    checkForUpdate().then(setUpdateInfo)
+  }, [])
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -40,6 +47,7 @@ function App() {
     <div className="flex h-full w-full bg-zinc-50">
       <OnboardingModal />
       <Toaster />
+      {updateInfo && <UpdateModal info={updateInfo} onClose={() => setUpdateInfo(null)} />}
 
       {/* Global Navigation Sidebar - extends to top */}
       <GlobalSidebar />

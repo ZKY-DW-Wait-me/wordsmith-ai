@@ -160,4 +160,12 @@ export const enUS: LocaleResource = {
     fetchedCount: 'available models',
     needApiKey: 'Enter API Key to fetch full model list',
   },
+  update: {
+    title: 'Update Available',
+    newVersion: 'Latest version',
+    changelog: 'What\'s new',
+    ocrWarning: 'This update involves OCR engine architecture changes. You will need to re-import the OCR engine pack and GPU acceleration pack after updating.',
+    download: 'Go to Download',
+    later: 'Remind Me Later',
+  },
 }

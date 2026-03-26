@@ -1,5 +1,17 @@
 [简体中文](CHANGELOG.md) | [English](CHANGELOG.en-US.md)
 # Changelog
+
+> **Version Numbering**: Release versions use `vX.Y.Z`, beta branches use `vX.Y.Z-<feature>.N` to distinguish feature lines. Merged to main as the next release version.
+
+## v1.1.4-updater.1 (beta/updater)
+### Added
+- Added version update detection: automatically checks remote API on startup, prompts user when a new version is available
+- Added update modal: displays new version number, release date, and changelog, redirects to GitHub Release on confirm
+- Added OCR architecture change warning: when remote `ocrchange` is `1`, shows extra warning that OCR engine packs need to be re-imported after update
+- Injected `__APP_VERSION__` via Vite `define` for runtime version comparison
+### Fixed
+- User data (settings, history) and OCR engine are automatically preserved during overlay installation
+
 ## v1.1.3 (Current)
 ### Added
 - Added table structure enhancement: integrated RT-DETR-L wired/wireless table cell detection models (`table_wired_det.onnx` + `table_wireless_det.onnx`), 3-level fallback chain (model detection → morphological grid → coordinate clustering), significantly improved complex table reconstruction
