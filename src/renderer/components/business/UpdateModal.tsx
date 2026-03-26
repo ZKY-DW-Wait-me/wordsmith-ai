@@ -1,5 +1,5 @@
 import type { UpdateInfo } from '../../services/UpdateService'
-import { useI18nStore } from '../../store/useI18nStore'
+import { useI18n } from '../../store/useI18nStore'
 import { Dialog, DialogHeader, DialogTitle, DialogClose, DialogContent, DialogFooter } from '../ui/Dialog'
 import { Button } from '../ui/button'
 import { Download, AlertTriangle } from 'lucide-react'
@@ -10,7 +10,7 @@ interface UpdateModalProps {
 }
 
 export function UpdateModal({ info, onClose }: UpdateModalProps) {
-  const t = useI18nStore((s) => s.t())
+  const t = useI18n()
 
   const handleDownload = () => {
     window.open(info.update_url, '_blank')
