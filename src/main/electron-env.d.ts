@@ -136,6 +136,7 @@ interface Window {
       close: () => void
       isMaximized: () => Promise<boolean>
       onMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void
+      openExternal: (url: string) => Promise<void>
     }
   }
 }
