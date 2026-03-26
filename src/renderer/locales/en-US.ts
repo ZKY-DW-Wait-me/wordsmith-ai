@@ -167,5 +167,9 @@ export const enUS: LocaleResource = {
     ocrWarning: 'This update involves OCR engine architecture changes. You will need to re-import the OCR engine pack and GPU acceleration pack after updating.',
     download: 'Go to Download',
     later: 'Remind Me Later',
+    aboutTitle: 'About & Updates',
+    currentVersion: 'Current version',
+    upToDate: 'You are on the latest version',
+    checkNow: 'Check for Updates',
   },
 }

@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import { useAppStore } from './store/useAppStore'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import NewPage from './pages/New'
 import HistoryPage from './pages/History'
 import SettingsPage from './pages/Settings'
@@ -10,16 +10,23 @@ import { Toaster } from './components/ui/Toaster'
 import { GlobalSidebar } from './components/business/GlobalSidebar'
 import { PageLayout } from './layouts/PageLayout'
 import { UpdateModal } from './components/business/UpdateModal'
-import { checkForUpdate, type UpdateInfo } from './services/UpdateService'
+import { checkForUpdate } from './services/UpdateService'
+import { useUpdateStore } from './store/useUpdateStore'
 
 function App() {
   const eyeCareMode = useAppStore((s) => s.settings.eyeCareMode)
   const ocrEnginePath = useAppStore((s) => s.settings.ocrEnginePath)
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const updateInfo = useUpdateStore((s) => s.updateInfo)
+  const dismissed = useUpdateStore((s) => s.dismissed)
+  const setUpdateInfo = useUpdateStore((s) => s.setUpdateInfo)
+  const dismissUpdate = useUpdateStore((s) => s.dismiss)
 
+  // 启动时异步检测版本更新
   useEffect(() => {
-    checkForUpdate().then(setUpdateInfo)
-  }, [])
+    checkForUpdate().then((info) => {
+      if (info) setUpdateInfo(info)
+    })
+  }, [setUpdateInfo])
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -47,7 +54,7 @@ function App() {
     <div className="flex h-full w-full bg-zinc-50">
       <OnboardingModal />
       <Toaster />
-      {updateInfo && <UpdateModal info={updateInfo} onClose={() => setUpdateInfo(null)} />}
+      {updateInfo && !dismissed && <UpdateModal info={updateInfo} onClose={dismissUpdate} />}
 
       {/* Global Navigation Sidebar - extends to top */}
       <GlobalSidebar />

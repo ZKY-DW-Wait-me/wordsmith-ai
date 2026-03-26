@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FilePlus2, Clock, Settings, HelpCircle, Sparkles, Plus } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useAppStore } from '../../store/useAppStore'
+import { useUpdateStore } from '../../store/useUpdateStore'
 
 const NAV_ITEMS = [
   { to: '/', icon: FilePlus2, label: '主页' },
@@ -15,6 +16,7 @@ export function GlobalSidebar() {
   const navigate = useNavigate()
   const createNewChat = useAppStore((s) => s.createNewChat)
   const hasMessages = useAppStore((s) => s.workspace.messages.length > 0)
+  const hasUpdate = useUpdateStore((s) => !!s.updateInfo)
 
   const handleNewChat = () => {
     createNewChat()
@@ -72,6 +74,10 @@ export function GlobalSidebar() {
               )}
             >
               <Icon size={20} strokeWidth={active ? 2 : 1.5} />
+              {/* 设置图标上的更新红点 */}
+              {item.to === '/settings' && hasUpdate && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
+              )}
               {/* Tooltip - positioned to the right, outside the sidebar */}
               <span className="pointer-events-none absolute left-full top-1/2 z-[100] ml-3 -translate-y-1/2 whitespace-nowrap rounded-xl bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                 {item.label}
