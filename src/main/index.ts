@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { mkdir, rm, rename, readdir, copyFile, cp, access, constants as fsConst } from 'node:fs/promises'
@@ -861,6 +861,13 @@ ipcMain.on('window:close', () => {
 
 ipcMain.handle('window:isMaximized', () => {
   return win?.isMaximized() ?? false
+})
+
+ipcMain.handle('window:openExternal', (_event, url: string) => {
+  // 安全校验：只允许 https 链接
+  if (typeof url === 'string' && url.startsWith('https://')) {
+    return shell.openExternal(url)
+  }
 })
 
 async function createWindow() {

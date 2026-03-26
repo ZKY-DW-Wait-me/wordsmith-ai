@@ -37,6 +37,16 @@ export interface RecentModels {
   vlm: Record<string, string[]>
 }
 
+/** 跨对话固定的轮次（内容快照） */
+export interface PinnedRound {
+  id: string
+  sourceId: string        // 来源 history item ID
+  sourceTitle: string     // 来源对话标题快照
+  userContent: string     // user 消息快照
+  assistantContent: string // assistant 消息快照
+  pinnedAt: number
+}
+
 export interface StreamChatRequest {
   mode: PromptMode
   model: AIModelConfig

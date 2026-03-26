@@ -1,9 +1,10 @@
 import { useMemo, useRef, useEffect, useState, type ReactNode } from 'react'
-import { Send, Square, Sparkles, Wrench, Bug, X } from 'lucide-react'
-import type { PromptMode, ReferenceFileInput } from '../../types/ai'
+import { Send, Square, Sparkles, Wrench, Bug, X, Pin, RefreshCw, Play } from 'lucide-react'
+import type { PromptMode, ReferenceFileInput, PinnedRound } from '../../types/ai'
 import type { GuardReport } from '../../types/guard'
 import { guardHtml } from '../../lib/protocol-guard'
 import { streamChat, getFullPromptForDebug } from '../../services/ai-service'
+import { buildFilteredMessages, computeRoundStates } from '../../lib/context-filter'
 import { errorHandler } from '../../services/ErrorHandler'
 import { logger } from '../../services/LoggerService'
 import { useI18n } from '../../store/useI18nStore'
@@ -20,9 +21,13 @@ export interface ChatPanelProps {
   htmlDraft: string
   onHtmlFinalized: (html: string, report: GuardReport, payload: { mode: PromptMode; messages: EnhancedChatMessage[] }) => void
   emptyState?: ReactNode
+  contextMaxRounds: number
+  roundOverrides: Record<number, boolean>
+  pinnedRounds: PinnedRound[]
+  onToggleRound: (roundIndex: number) => void
 }
 
-export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction, referenceFiles, htmlDraft, onHtmlFinalized, emptyState }: ChatPanelProps) {
+export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction, referenceFiles, htmlDraft, onHtmlFinalized, emptyState, contextMaxRounds, roundOverrides, pinnedRounds, onToggleRound }: ChatPanelProps) {
   const t = useI18n()
 
   // 使用全局状态
@@ -33,6 +38,7 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
   const { mode, input, messages, streaming } = workspace
   const abortRef = useRef<AbortController | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Debug Modal 状态
   const [debugModal, setDebugModal] = useState<{ open: boolean; content: string }>({ open: false, content: '' })
@@ -44,9 +50,10 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
     return htmlDraft.trim().length > 0
   }, [baseUrl, model, mode, input, htmlDraft, streaming])
 
-  // Auto scroll to bottom
+  // Auto scroll to bottom — 用容器 scrollTop 避免影响父级布局
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = scrollContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
   const setMode = (newMode: PromptMode) => updateWorkspace({ mode: newMode })
@@ -64,21 +71,55 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
     setDebugModal({ open: true, content })
   }
 
-  const send = async () => {
+  // 将消息按轮次分组
+  const rounds = useMemo(() => {
+    const visible = messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+    const result: { user: EnhancedChatMessage; assistant: EnhancedChatMessage | null; isCurrentStreaming: boolean }[] = []
+    let i = 0
+    while (i < visible.length) {
+      if (visible[i].role === 'user') {
+        const assistant = visible[i + 1]?.role === 'assistant' ? visible[i + 1] as EnhancedChatMessage : null
+        const isCurrentStreaming = streaming && assistant !== null && i + 1 === visible.length - 1
+        result.push({ user: visible[i] as EnhancedChatMessage, assistant, isCurrentStreaming })
+        i += assistant ? 2 : 1
+      } else {
+        i++
+      }
+    }
+    return result
+  }, [messages, streaming])
+
+  // 计算轮次状态（完成的轮次才有复选框）
+  const completedRoundCount = rounds.filter((r) => r.assistant && !r.isCurrentStreaming).length
+  const roundStates = useMemo(
+    () => computeRoundStates(completedRoundCount, contextMaxRounds, roundOverrides),
+    [completedRoundCount, contextMaxRounds, roundOverrides]
+  )
+
+  const send = async (overrideUserText?: string, baseMessages?: EnhancedChatMessage[]) => {
     const controller = new AbortController()
     abortRef.current = controller
     setStreaming(true)
 
-    const userText = mode === 'generate' ? input.trim() : htmlDraft.trim()
+    const base = baseMessages || messages
+    const userText = overrideUserText ?? (mode === 'generate' ? input.trim() : htmlDraft.trim())
     const nextMessages: EnhancedChatMessage[] = [
-      ...messages,
+      ...base,
       { role: 'user', content: userText },
       { role: 'assistant', content: '' },
     ]
     setWorkspaceMessages(nextMessages)
-    setInput('')
+    if (!overrideUserText) setInput('')
 
     logger.action('ChatPanel', 'Start generation', { mode, model })
+
+    // 构建过滤后的消息用于发送
+    const filtered = buildFilteredMessages(
+      nextMessages.slice(0, -1),
+      contextMaxRounds,
+      roundOverrides,
+      pinnedRounds
+    )
 
     // 获取完整的请求 Prompt 用于 Debug
     const rawRequest = getFullPromptForDebug(
@@ -86,7 +127,7 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
         mode,
         model: { baseUrl, apiKey, model },
         defaults,
-        messages: nextMessages.slice(0, -1),
+        messages: filtered,
       },
       customInstruction,
       referenceFiles
@@ -98,7 +139,7 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
         mode,
         model: { baseUrl, apiKey, model },
         defaults,
-        messages: nextMessages.slice(0, -1),
+        messages: filtered,
         signal: controller.signal,
         customInstruction,
         referenceFiles,
@@ -139,10 +180,106 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
     }
   }
 
+  // 重新生成：移除最后一轮，用相同的 user 消息重新发送
+  const regenerate = (roundIdx: number) => {
+    if (streaming) return
+    const visible = messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+    // 找到该轮次对应的 user 消息
+    const pairStart = roundIdx * 2
+    const userContent = visible[pairStart]?.content
+    if (!userContent) return
+    // 截断消息到该轮之前
+    const base = messages.slice(0, messages.indexOf(visible[pairStart]))
+    send(userContent, base)
+  }
+
+  // 继续生成：将 AI 续写内容拼接到被中断的 assistant 消息后面
+  const continueGeneration = async () => {
+    if (streaming) return
+    const controller = new AbortController()
+    abortRef.current = controller
+    setStreaming(true)
+
+    logger.action('ChatPanel', 'Continue generation', { mode, model })
+
+    // 构建请求消息：所有当前消息 + 一条隐式"请继续"指令
+    const continueMessages = buildFilteredMessages(
+      [...messages, { role: 'user', content: '请继续上面未完成的内容，从上次中断处继续输出，不要重复已有内容。' }],
+      contextMaxRounds,
+      roundOverrides,
+      pinnedRounds
+    )
+
+    // 找到最后一条 assistant 消息的已有内容
+    const lastAssistantIdx = messages.length - 1
+    const existingContent = messages[lastAssistantIdx]?.content || ''
+
+    try {
+      let newText = ''
+      const stream = streamChat({
+        mode,
+        model: { baseUrl, apiKey, model },
+        defaults,
+        messages: continueMessages,
+        signal: controller.signal,
+        customInstruction,
+        referenceFiles,
+      })
+
+      for await (const delta of stream) {
+        newText += delta
+        // 拼接到已有内容后面，更新最后一条 assistant 消息
+        const updated = [...messages]
+        updated[lastAssistantIdx] = {
+          ...updated[lastAssistantIdx],
+          content: existingContent + newText,
+        }
+        setWorkspaceMessages(updated)
+      }
+
+      const fullContent = existingContent + newText
+      const guarded = guardHtml(fullContent, defaults)
+
+      const rawRequest = getFullPromptForDebug(
+        { mode, model: { baseUrl, apiKey, model }, defaults, messages: continueMessages },
+        customInstruction,
+        referenceFiles
+      )
+
+      const finishedMessages = [...messages]
+      finishedMessages[lastAssistantIdx] = {
+        ...finishedMessages[lastAssistantIdx],
+        content: fullContent,
+        rawRequest,
+        rawResponse: fullContent,
+      }
+      setWorkspaceMessages(finishedMessages)
+      onHtmlFinalized(guarded.html, guarded.report, { mode, messages: finishedMessages })
+      logger.info('ChatPanel', 'Continue generation success', { length: fullContent.length })
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        logger.info('ChatPanel', 'Continue generation aborted')
+      } else {
+        errorHandler.handle(e, 'api')
+      }
+    } finally {
+      setStreaming(false)
+      abortRef.current = null
+    }
+  }
+
+  // 判断最后一轮是否被中断（有内容但没有 rawResponse）
+  const lastRound = rounds.length > 0 ? rounds[rounds.length - 1] : null
+  const isLastRoundInterrupted = lastRound
+    && lastRound.assistant
+    && lastRound.assistant.content
+    && !lastRound.assistant.rawResponse
+    && !streaming
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages Area */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
+      <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
         {messages.length === 0 ? (
           emptyState || (
             <div className="flex h-full flex-col items-center justify-center text-center">
@@ -159,43 +296,107 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
           )
         ) : (
           <div className="space-y-4">
-            {messages
-              .filter((m) => m.role === 'user' || m.role === 'assistant')
-              .map((m, idx) => (
-                <div
-                  key={idx}
-                  className={`flex animate-fade-in-up ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className="flex items-start gap-2">
-                    {m.role === 'assistant' && m.rawRequest && (
-                      <button
-                        onClick={() => showDebug(m)}
-                        className="mt-2 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
-                        title="查看 Debug 信息"
-                      >
-                        <Bug size={14} />
-                      </button>
-                    )}
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                        m.role === 'user'
-                          ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 text-white'
-                          : 'bg-zinc-100/80 text-zinc-800'
-                      }`}
+            {/* 固定轮次提示 */}
+            {pinnedRounds.length > 0 && (
+              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-violet-50 px-3 py-1.5 text-xs text-violet-600">
+                <Pin size={12} />
+                <span>{t.context.pinnedIndicator.replace('{n}', String(pinnedRounds.length))}</span>
+              </div>
+            )}
+
+            {rounds.map((round, roundIdx) => {
+              // 找到对应的轮次状态（仅完成的轮次有）
+              const isCompleted = round.assistant && !round.isCurrentStreaming
+              const roundState = isCompleted ? roundStates[roundIdx] : null
+
+              return (
+                <div key={roundIdx} className="group/round relative">
+                  {/* 轮次复选框 */}
+                  {roundState && (
+                    <button
+                      onClick={() => onToggleRound(roundIdx)}
+                      className="absolute -left-1 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all hover:scale-110"
+                      style={{
+                        borderColor: roundState.included
+                          ? (roundState.inWindow ? '#3f3f46' : '#8b5cf6')
+                          : '#d4d4d8',
+                        backgroundColor: roundState.included
+                          ? (roundState.inWindow ? '#3f3f46' : '#8b5cf6')
+                          : 'transparent',
+                      }}
+                      title={roundState.included ? '点击排除此轮' : '点击包含此轮'}
                     >
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {m.content || (streaming && m.role === 'assistant' ? (
-                          <span className="inline-flex items-center gap-1 text-zinc-400">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" style={{ animationDelay: '0.2s' }} />
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" style={{ animationDelay: '0.4s' }} />
-                          </span>
-                        ) : null)}
+                      {roundState.included && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
+
+                  <div className="ml-5 space-y-2">
+                    {/* User message */}
+                    <div className="flex animate-fade-in-up justify-end">
+                      <div className="max-w-[85%] rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 px-4 py-3 text-white">
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {round.user.content}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Assistant message */}
+                    {round.assistant && (
+                      <div className="flex animate-fade-in-up justify-start">
+                        <div className="flex items-start gap-2">
+                          {round.assistant.rawRequest && (
+                            <button
+                              onClick={() => showDebug(round.assistant!)}
+                              className="mt-2 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                              title="查看 Debug 信息"
+                            >
+                              <Bug size={14} />
+                            </button>
+                          )}
+                          <div className="max-w-[85%] rounded-2xl bg-zinc-100/80 px-4 py-3 text-zinc-800">
+                            <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                              {round.assistant.content || (streaming && round.isCurrentStreaming ? (
+                                <span className="inline-flex items-center gap-1 text-zinc-400">
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" style={{ animationDelay: '0.2s' }} />
+                                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" style={{ animationDelay: '0.4s' }} />
+                                </span>
+                              ) : null)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 操作按钮：重新生成 / 继续生成 */}
+                    {!streaming && round.assistant && round.assistant.content && roundIdx === rounds.length - 1 && (
+                      <div className="flex items-center gap-2 pl-1">
+                        <button
+                          onClick={() => regenerate(roundIdx)}
+                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                        >
+                          <RefreshCw size={12} />
+                          {t.chat.regenerate}
+                        </button>
+                        {isLastRoundInterrupted && (
+                          <button
+                            onClick={continueGeneration}
+                            className="flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-700"
+                          >
+                            <Play size={12} />
+                            {t.chat.continue}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+              )
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -258,7 +459,7 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
               ) : (
                 <Button
                   size="icon"
-                  onClick={send}
+                  onClick={() => send()}
                   disabled={!canSend || !apiKey}
                   className="mb-1.5 mr-1.5 shrink-0"
                 >

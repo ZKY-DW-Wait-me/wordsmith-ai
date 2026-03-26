@@ -27,6 +27,27 @@ Additionally, v1.1.4-beta introduces a **LaTeX Formula Editor** (sidebar Σ entr
 - AI Formula Assistant (streaming chat to generate LaTeX, one-click insert) + context count control
 - Staircase dual-panel layout (AI assistant + history can open simultaneously)
 
+### Smart Context Control (beta)
+
+Fine-grained control over the conversation context sent to AI, optimizing formatting quality and saving tokens:
+
+- **Round Slider**: Set the most recent N rounds (0~20) of conversation to participate in AI reasoning, unlimited by default
+- **Per-round Toggle**: Each completed round has a checkbox to manually include/exclude, overriding the default window rule
+- **Pin History Rounds**: Pin valuable conversation snippets from history as cross-session context snapshots, stored independently — deleting history does not affect pinned rounds
+- **Regenerate / Continue**: Regenerate the last AI reply or continue from where it was interrupted
+
+### Update Detection (beta)
+
+Automatically checks for new versions on startup:
+
+- Displays new version number, release date, and changelog
+- Supports "Remind Me Later" (no popup for 3 days) and "Skip This Version" (never popup for same version)
+- Shows an extra warning if OCR engine architecture has changed, reminding users to re-import OCR engine packs after updating
+- Red dot indicator on sidebar settings icon (disappears after user takes action)
+- View current version and update details in Settings "General" tab, with manual check button
+- User data and OCR engine are preserved during overlay installation, no reconfiguration needed
+- Opens download link in system default browser
+
 ### 📥 Installation Instructions
 1. Download the latest version of the .exe installer (Current latest: **v1.1.3**, LaTeX editor beta: **v1.1.4-latex.2**).
 2. **OCR functionality** requires additional engine packages, configured in "Settings → Advanced → OCR Image Recognition":

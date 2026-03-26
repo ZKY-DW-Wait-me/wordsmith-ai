@@ -27,6 +27,32 @@
 ### Changed
 - Switched image export from SVG foreignObject to Electron captureArea + Canvas post-processing, fixing KaTeX font loading failure in Blob URL context
 
+## v1.1.4-context.1 (beta/smart-context)
+### Added
+- Added context round slider (0=unlimited, max 20 rounds) to control the number of historical conversation rounds sent to AI, reducing token consumption
+- Added per-round checkbox: each completed round displays a toggle control for manual include/exclude, overriding default window rules
+- Added pinned history rounds: select conversation rounds from history as cross-session context snapshots, stored independently from history records
+- Added pinned rounds dialog: left panel with history list + search, right panel with round preview + per-round pin controls
+- Added regenerate button: click to regenerate the last AI reply
+- Added continue generation button: auto-detected when AI output is interrupted, appends content to existing reply (no new bubble)
+- Added context filter engine `context-filter.ts` with 14 unit tests
+### Fixed
+- Fixed chat panel input box being clipped at window bottom (`h-full` → `flex-1 min-h-0`)
+- Fixed left sidebar new sections crowding custom instruction and reference document space
+
+## v1.1.4-updater.1 (beta/updater)
+### Added
+- Added version update detection: automatically checks remote API on startup, prompts user when a new version is available
+- Added update modal with three actions: "Go to Download", "Remind Me Later", and "Skip This Version"
+- Added OCR architecture change warning: when remote `ocrchange` is `1`, shows extra warning that OCR engine packs need to be re-imported after update
+- Added red dot indicator on sidebar settings icon, disappears after user takes action (later/skip)
+- Added "About & Updates" card in Settings "General" tab: current version, update details, manual "Check for Updates" button
+- Added `window:openExternal` IPC channel to open download links in system default browser
+- Added anti-annoyance mechanism: "Remind Later" suppresses popup for 3 days, "Skip Version" permanently skips same version, persisted in localStorage
+- Injected `__APP_VERSION__` via Vite `define` for runtime version comparison
+### Fixed
+- User data (settings, history) and OCR engine are automatically preserved during overlay installation
+
 ## v1.1.3 (Current)
 ### Added
 - Added table structure enhancement: integrated RT-DETR-L wired/wireless table cell detection models (`table_wired_det.onnx` + `table_wireless_det.onnx`), 3-level fallback chain (model detection → morphological grid → coordinate clustering), significantly improved complex table reconstruction

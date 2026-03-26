@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Globe, Palette, Bot, Wrench, Check, Loader2, X, ChevronDown, AlertTriangle,
-  CheckCircle, XCircle, FolderOpen, Cloud, HardDrive, Cpu
+  CheckCircle, XCircle, FolderOpen, Cloud, HardDrive, Cpu, Download, ExternalLink
 } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { useI18n, useLocale, useSetLocale } from '../store/useI18nStore'
@@ -14,6 +14,10 @@ import { Button } from '../components/ui/button'
 import { ModelSelector } from '../components/ui/ModelSelector'
 import { ConfirmDialog } from '../components/ui/Dialog'
 import { cn } from '../lib/cn'
+import { useUpdateStore } from '../store/useUpdateStore'
+import { checkForUpdate } from '../services/UpdateService'
+
+declare const __APP_VERSION__: string
 
 const TABS = [
   { id: 'general', label: '常规', icon: Globe },
@@ -46,6 +50,8 @@ export default function SettingsPage() {
   const [showVlmProviderDropdown, setShowVlmProviderDropdown] = useState(false)
   const [gpuStatus, setGpuStatus] = useState<GpuPackStatus | null>(null)
   const [gpuImporting, setGpuImporting] = useState(false)
+  const updateInfo = useUpdateStore((s) => s.updateInfo)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   const currentProvider = AI_PROVIDERS.find(p => p.url === settings.ai.baseUrl)
   const currentVlmProvider = VLM_PROVIDERS.find(p => p.url === settings.vlmOcr.baseUrl)
@@ -223,6 +229,7 @@ export default function SettingsPage() {
       <div className="space-y-4">
         {/* 常规设置 */}
         {activeTab === 'general' && (
+          <>
           <div className="rounded-xl border border-zinc-200 bg-white p-5">
             <h3 className="mb-4 text-sm font-medium text-zinc-900">
               {t.settings.language}
@@ -244,6 +251,74 @@ export default function SettingsPage() {
               </Button>
             </div>
           </div>
+
+            {/* 版本与更新 */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-5">
+              <h3 className="mb-4 text-sm font-medium text-zinc-900">
+                {t.update.aboutTitle}
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-zinc-500">{t.update.currentVersion}</span>
+                  <span className="text-sm font-medium text-zinc-900">v{__APP_VERSION__}</span>
+                </div>
+
+                {updateInfo ? (
+                  <div className="rounded-lg bg-violet-50 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Download size={14} className="text-violet-600" />
+                      <span className="text-sm font-medium text-violet-700">
+                        {t.update.title} v{updateInfo.version}
+                      </span>
+                    </div>
+                    <p className="mb-2 whitespace-pre-wrap text-xs text-violet-600">{updateInfo.changelog}</p>
+                    {updateInfo.ocrchange === '1' && (
+                      <div className="mb-2 flex items-start gap-1.5 text-xs text-amber-600">
+                        <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                        <span>{t.update.ocrWarning}</span>
+                      </div>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={() => window.wordsmith?.window?.openExternal?.(updateInfo.update_url)}
+                      className="gap-1.5"
+                    >
+                      <ExternalLink size={12} />
+                      {t.update.download}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-zinc-500">
+                    <CheckCircle size={14} className="text-emerald-500" />
+                    <span>{t.update.upToDate}</span>
+                  </div>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    setCheckingUpdate(true)
+                    try {
+                      const info = await checkForUpdate()
+                      if (info) {
+                        useUpdateStore.getState().setUpdateInfo(info, true)
+                      } else {
+                        toast({ title: t.update.upToDate, variant: 'success' })
+                      }
+                    } finally {
+                      setCheckingUpdate(false)
+                    }
+                  }}
+                  disabled={checkingUpdate}
+                  className="gap-2"
+                >
+                  {checkingUpdate && <Loader2 size={14} className="animate-spin" />}
+                  {t.update.checkNow}
+                </Button>
+              </div>
+            </div>
+          </>
         )}
 
         {/* 外观设置 */}
