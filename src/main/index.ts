@@ -146,6 +146,59 @@ ipcMain.handle('clipboard:captureAreaAsDataUrl', async (event, rect: { x: number
   return image.toDataURL()
 })
 
+// 离屏渲染 KaTeX 公式（零闪烁）— 在不可见窗口中渲染并截图
+let _offscreenWin: BrowserWindow | null = null
+
+ipcMain.handle('clipboard:renderKatexOffscreen', async (_event, params: {
+  katexHtml: string
+  katexCss: string
+  fontSize: number
+  padding: number
+}) => {
+  // 懒创建离屏窗口，复用以避免重复创建开销
+  if (!_offscreenWin || _offscreenWin.isDestroyed()) {
+    _offscreenWin = new BrowserWindow({
+      show: false,
+      width: 2000,
+      height: 1000,
+      webPreferences: { webSecurity: false },
+    })
+    await _offscreenWin.loadURL('about:blank')
+  }
+
+  const offWin = _offscreenWin
+
+  // 注入 KaTeX CSS（含绝对字体 URL）+ 公式 HTML
+  await offWin.webContents.insertCSS(params.katexCss)
+  const rect: { x: number; y: number; width: number; height: number } = await offWin.webContents.executeJavaScript(`
+    (() => {
+      document.body.innerHTML = '';
+      document.body.style.cssText = 'margin:0;padding:0;background:white;overflow:visible;';
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'padding:${params.padding}px;font-size:${params.fontSize}px;line-height:1.2;display:inline-block;background:white;';
+      wrapper.innerHTML = ${JSON.stringify(params.katexHtml)};
+      document.body.appendChild(wrapper);
+      const el = wrapper.querySelector('.katex-display') || wrapper.querySelector('.katex') || wrapper;
+      const r = el.getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) };
+    })()
+  `)
+
+  // 等待字体加载 + 渲染完成
+  await offWin.webContents.executeJavaScript('document.fonts.ready')
+  await new Promise(r => setTimeout(r, 100))
+
+  const pad = 8
+  const captureRect = {
+    x: Math.max(0, rect.x - pad),
+    y: Math.max(0, rect.y - pad),
+    width: rect.width + pad * 2,
+    height: rect.height + pad * 2,
+  }
+  const image = await offWin.webContents.capturePage(captureRect)
+  return image.toDataURL()
+})
+
 // Models fetch IPC — 在主进程发起 HTTP 请求，绕过渲染进程 CORS 限制
 ipcMain.handle('models:fetch', async (_event, url: string, apiKey: string): Promise<{ ok: boolean; status?: number; body?: string; error?: string }> => {
   try {

@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('wordsmith', {
     captureAreaAsDataUrl(rect: { x: number; y: number; width: number; height: number }) {
       return ipcRenderer.invoke('clipboard:captureAreaAsDataUrl', rect) as Promise<string>
     },
+    renderKatexOffscreen(params: { katexHtml: string; katexCss: string; fontSize: number; padding: number }) {
+      return ipcRenderer.invoke('clipboard:renderKatexOffscreen', params) as Promise<string>
+    },
   },
   models: {
     fetch(url: string, apiKey: string) {

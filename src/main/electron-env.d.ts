@@ -63,6 +63,7 @@ interface Window {
       writeImage: (dataUrl: string) => Promise<void>
       captureArea: (rect: { x: number; y: number; width: number; height: number }, transparent?: boolean) => Promise<boolean>
       captureAreaAsDataUrl: (rect: { x: number; y: number; width: number; height: number }) => Promise<string>
+      renderKatexOffscreen: (params: { katexHtml: string; katexCss: string; fontSize: number; padding: number }) => Promise<string>
     }
     models: {
       fetch: (url: string, apiKey: string) => Promise<{

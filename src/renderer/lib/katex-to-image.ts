@@ -1,8 +1,8 @@
 /**
- * KaTeX → 高清 PNG DataURL
+ * KaTeX → 高清 PNG DataURL（零闪烁）
  *
- * Electron: DOM 超大字号渲染 → captureAreaAsDataUrl → 白转透明 → 智能裁剪 → DPI 注入
- * Web 回退: SVG foreignObject（字体可能不完美）
+ * 方案：隐藏 DOM 渲染 KaTeX → 提取 HTML → 主进程离屏 BrowserWindow 截图 → 白转透明 → 智能裁剪 → DPI 注入
+ * 全程不在可见区域渲染，彻底消除导出闪烁。
  */
 
 import katex from 'katex'
@@ -127,6 +127,35 @@ function whiteToTransparent(ctx: CanvasRenderingContext2D, w: number, h: number)
   ctx.putImageData(imageData, 0, 0)
 }
 
+/* ---------- KaTeX CSS 提取（含绝对字体 URL） ---------- */
+
+let _cachedKatexCss: string | null = null
+
+/**
+ * 从 document.styleSheets 提取 KaTeX 相关 CSS 规则。
+ * 浏览器已将字体 URL 解析为绝对路径，离屏窗口可直接加载。
+ */
+function extractKatexCss(): string {
+  if (_cachedKatexCss) return _cachedKatexCss
+
+  let rules = ''
+  for (const sheet of document.styleSheets) {
+    try {
+      for (const rule of sheet.cssRules) {
+        const text = rule.cssText
+        if (text.includes('KaTeX') || text.includes('katex')) {
+          rules += text + '\n'
+        }
+      }
+    } catch {
+      // 跨域样式表无法访问，跳过
+    }
+  }
+
+  _cachedKatexCss = rules
+  return rules
+}
+
 /* ---------- 主函数 ---------- */
 
 export async function katexToDataUrl(
@@ -140,6 +169,10 @@ export async function katexToDataUrl(
     baseFontSizePx = 20,
   } = options
 
+  // 优先使用离屏窗口方案（零闪烁），回退到旧方案
+  if (window.wordsmith?.clipboard?.renderKatexOffscreen) {
+    return offscreenApproach(latex, scale, targetPtSize, cropPadding, baseFontSizePx)
+  }
   if (window.wordsmith?.clipboard?.captureAreaAsDataUrl) {
     return captureApproach(latex, scale, targetPtSize, cropPadding, baseFontSizePx)
   }
@@ -147,8 +180,67 @@ export async function katexToDataUrl(
 }
 
 /**
- * Electron: 在 DOM 中以 scale 倍字号渲染 KaTeX，
- * 用 captureAreaAsDataUrl 截取 → 白转透明 → 智能裁剪 → DPI 注入。
+ * 离屏窗口方案（零闪烁）：
+ * 1. 在隐藏 DOM 中渲染 KaTeX 获取 innerHTML
+ * 2. 提取页面中 KaTeX CSS（含绝对字体 URL）
+ * 3. 发送到主进程离屏 BrowserWindow 渲染 + capturePage
+ * 4. 返回后做白转透明 + 智能裁剪 + DPI 注入
+ */
+async function offscreenApproach(
+  latex: string,
+  scale: number,
+  targetPtSize: number,
+  cropPadding: number,
+  baseFontSizePx: number,
+): Promise<string> {
+  const renderFontSize = baseFontSizePx * scale
+  const dpr = window.devicePixelRatio || 1
+  const padding = Math.round(renderFontSize * 0.3)
+
+  // 在隐藏容器中渲染 KaTeX，获取 HTML
+  const container = document.createElement('div')
+  container.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden;'
+  document.body.appendChild(container)
+
+  try {
+    katex.render(latex, container, { displayMode: true, throwOnError: false, output: 'html' })
+    const katexHtml = container.innerHTML
+
+    // 提取 KaTeX CSS（含绝对字体 URL）
+    const katexCss = extractKatexCss()
+
+    // 发送到主进程离屏窗口渲染
+    const dataUrl = await window.wordsmith!.clipboard.renderKatexOffscreen({
+      katexHtml,
+      katexCss,
+      fontSize: renderFontSize,
+      padding,
+    })
+
+    // 在 canvas 上后处理
+    const img = await loadImage(dataUrl)
+    const canvas = document.createElement('canvas')
+    canvas.width = img.width
+    canvas.height = img.height
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0)
+
+    // 白 → 透明
+    whiteToTransparent(ctx, canvas.width, canvas.height)
+
+    // 智能裁剪（padding 需乘 dpr，因为 capturePage 返回设备像素）
+    const cropped = smartCrop(canvas, Math.round(cropPadding * dpr))
+
+    // DPI 注入
+    const dpi = Math.round(scale * baseFontSizePx * dpr * 72 / targetPtSize)
+    return injectPngDpi(cropped.toDataURL('image/png'), dpi)
+  } finally {
+    document.body.removeChild(container)
+  }
+}
+
+/**
+ * 旧方案（回退）：在可见 DOM 渲染 → capturePage 截取
  */
 async function captureApproach(
   latex: string,
@@ -160,7 +252,6 @@ async function captureApproach(
   const renderFontSize = baseFontSizePx * scale
   const dpr = window.devicePixelRatio || 1
 
-  // 创建渲染容器（fixed 定位，白色背景）
   const wrapper = document.createElement('div')
   wrapper.style.cssText = [
     'position:fixed', 'left:0', 'top:0', 'z-index:99999',
@@ -177,10 +268,8 @@ async function captureApproach(
       output: 'html',
     })
 
-    // 等两帧确保布局完成 + 字体加载
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())))
 
-    // 取 .katex-display / .katex 精确区域
     const katexEl = (wrapper.querySelector('.katex-display') ||
                      wrapper.querySelector('.katex') ||
                      wrapper) as HTMLElement
@@ -196,7 +285,6 @@ async function captureApproach(
 
     const dataUrl = await window.wordsmith!.clipboard.captureAreaAsDataUrl(captureRect)
 
-    // 在 canvas 上后处理
     const img = await loadImage(dataUrl)
     const canvas = document.createElement('canvas')
     canvas.width = img.width
@@ -204,14 +292,8 @@ async function captureApproach(
     const ctx = canvas.getContext('2d')!
     ctx.drawImage(img, 0, 0)
 
-    // 白 → 透明
     whiteToTransparent(ctx, canvas.width, canvas.height)
-
-    // 智能裁剪（padding 需乘 dpr，因为 capturePage 返回设备像素）
     const cropped = smartCrop(canvas, Math.round(cropPadding * dpr))
-
-    // DPI = (scale * baseFontSizePx * dpr * 72) / targetPtSize
-    // 因为 capturePage 返回设备像素（CSS px × dpr）
     const dpi = Math.round(scale * baseFontSizePx * dpr * 72 / targetPtSize)
     return injectPngDpi(cropped.toDataURL('image/png'), dpi)
   } finally {
