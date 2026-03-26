@@ -21,13 +21,13 @@ WordSmith AI is a convenient formatting tool that leverages HTML format and stri
 
 Recognition results support manual correction. Users can directly upload or drag-and-drop images for text recognition.
 
-Additionally, v1.1.4-beta introduces a **LaTeX Formula Editor** (sidebar Σ entry), supporting:
+Additionally, v1.2.0 introduces a **LaTeX Formula Editor** (sidebar Σ entry), supporting:
 - Real-time KaTeX preview + LaTeX → UnicodeMath conversion (paste into Word, press Alt+= then Space to build the formula)
 - High-DPI image export (4x super-sampling + smart crop + DPI metadata matching Word 11pt font)
 - AI Formula Assistant (streaming chat to generate LaTeX, one-click insert) + context count control
 - Staircase dual-panel layout (AI assistant + history can open simultaneously)
 
-### Smart Context Control (beta)
+### Smart Context Control
 
 Fine-grained control over the conversation context sent to AI, optimizing formatting quality and saving tokens:
 
@@ -36,7 +36,7 @@ Fine-grained control over the conversation context sent to AI, optimizing format
 - **Pin History Rounds**: Pin valuable conversation snippets from history as cross-session context snapshots, stored independently — deleting history does not affect pinned rounds
 - **Regenerate / Continue**: Regenerate the last AI reply or continue from where it was interrupted
 
-### Update Detection (beta)
+### Update Detection
 
 Automatically checks for new versions on startup:
 
@@ -49,7 +49,7 @@ Automatically checks for new versions on startup:
 - Opens download link in system default browser
 
 ### 📥 Installation Instructions
-1. Download the latest version of the .exe installer (Current latest: **v1.1.3**, LaTeX editor beta: **v1.1.4-latex.2**).
+1. Download the latest version of the .exe installer (Current latest: **v1.2.0**).
 2. **OCR functionality** requires additional engine packages, configured in "Settings → Advanced → OCR Image Recognition":
    - **Local OCR**: Import `wordsmith-ocr-engine.zip` (OCR engine, ~1.8GB) and `wordsmith-gpu-pack.zip` (GPU acceleration pack, ~317MB). DirectML GPU acceleration is enabled automatically after import; falls back to CPU when no GPU is available.
    - **Cloud OCR**: Enter the API Key from your service provider and select a vision model.
