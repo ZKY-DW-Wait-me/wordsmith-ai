@@ -59,11 +59,11 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       return
     }
 
-    // 手动检查（设置页按钮）：清除旧记录，不弹窗（设置页自己展示），不亮红点
+    // 手动检查（设置页按钮）：清除旧记录，弹窗提示，不亮红点（设置页已展示）
     if (fromManualCheck) {
       localStorage.removeItem(DISMISS_KEY)
       localStorage.removeItem(SKIP_KEY)
-      set({ updateInfo: info, showModal: false, showDot: false })
+      set({ updateInfo: info, showModal: true, showDot: false })
       return
     }
 
