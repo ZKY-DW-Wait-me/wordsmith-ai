@@ -17,7 +17,7 @@ function App() {
   const eyeCareMode = useAppStore((s) => s.settings.eyeCareMode)
   const ocrEnginePath = useAppStore((s) => s.settings.ocrEnginePath)
   const updateInfo = useUpdateStore((s) => s.updateInfo)
-  const dismissed = useUpdateStore((s) => s.dismissed)
+  const showModal = useUpdateStore((s) => s.showModal)
   const setUpdateInfo = useUpdateStore((s) => s.setUpdateInfo)
   const dismissUpdate = useUpdateStore((s) => s.dismiss)
 
@@ -54,7 +54,7 @@ function App() {
     <div className="flex h-full w-full bg-zinc-50">
       <OnboardingModal />
       <Toaster />
-      {updateInfo && !dismissed && <UpdateModal info={updateInfo} onClose={dismissUpdate} />}
+      {updateInfo && showModal && <UpdateModal info={updateInfo} onClose={dismissUpdate} />}
 
       {/* Global Navigation Sidebar - extends to top */}
       <GlobalSidebar />

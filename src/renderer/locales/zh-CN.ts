@@ -169,7 +169,7 @@ export const zhCN = {
     currentVersion: '当前版本',
     upToDate: '已是最新版本',
     checkNow: '检查更新',
+    skip: '跳过此版本',
   },
-}
 
 export type LocaleResource = typeof zhCN

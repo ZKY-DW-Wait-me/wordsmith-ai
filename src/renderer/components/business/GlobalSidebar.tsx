@@ -16,7 +16,7 @@ export function GlobalSidebar() {
   const navigate = useNavigate()
   const createNewChat = useAppStore((s) => s.createNewChat)
   const hasMessages = useAppStore((s) => s.workspace.messages.length > 0)
-  const hasUpdate = useUpdateStore((s) => !!s.updateInfo)
+  const hasUpdate = useUpdateStore((s) => s.showDot)
 
   const handleNewChat = () => {
     createNewChat()

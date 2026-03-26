@@ -171,5 +171,5 @@ export const enUS: LocaleResource = {
     currentVersion: 'Current version',
     upToDate: 'You are on the latest version',
     checkNow: 'Check for Updates',
+    skip: 'Skip This Version',
   },
-}

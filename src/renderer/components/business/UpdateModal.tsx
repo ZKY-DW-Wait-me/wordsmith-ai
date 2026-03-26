@@ -1,5 +1,6 @@
 import type { UpdateInfo } from '../../services/UpdateService'
 import { useI18n } from '../../store/useI18nStore'
+import { useUpdateStore } from '../../store/useUpdateStore'
 import { Dialog, DialogHeader, DialogTitle, DialogClose, DialogContent, DialogFooter } from '../ui/Dialog'
 import { Button } from '../ui/button'
 import { Download, AlertTriangle } from 'lucide-react'
@@ -11,9 +12,18 @@ interface UpdateModalProps {
 
 export function UpdateModal({ info, onClose }: UpdateModalProps) {
   const t = useI18n()
+  const skipVersion = useUpdateStore((s) => s.skipVersion)
 
   const handleDownload = () => {
-    window.open(info.update_url, '_blank')
+    // 通过 Electron shell 用系统默认浏览器打开
+    if (window.wordsmith?.window?.openExternal) {
+      window.wordsmith.window.openExternal(info.update_url)
+    }
+    onClose()
+  }
+
+  const handleSkip = () => {
+    skipVersion()
     onClose()
   }
 
@@ -57,6 +67,10 @@ export function UpdateModal({ info, onClose }: UpdateModalProps) {
       </DialogContent>
 
       <DialogFooter>
+        <Button variant="ghost" size="sm" onClick={handleSkip} className="text-zinc-400">
+          {t.update.skip}
+        </Button>
+        <div className="flex-1" />
         <Button variant="ghost" onClick={onClose}>
           {t.update.later}
         </Button>

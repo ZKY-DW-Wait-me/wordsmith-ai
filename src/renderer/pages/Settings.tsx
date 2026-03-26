@@ -280,7 +280,7 @@ export default function SettingsPage() {
                     )}
                     <Button
                       size="sm"
-                      onClick={() => window.open(updateInfo.update_url, '_blank')}
+                      onClick={() => window.wordsmith?.window?.openExternal?.(updateInfo.update_url)}
                       className="gap-1.5"
                     >
                       <ExternalLink size={12} />
