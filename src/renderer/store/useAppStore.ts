@@ -1,8 +1,91 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { AIModelConfig, ChatMessage, PinnedRound, PromptMode, RecentModels, VlmOcrConfig } from '../types/ai'
 import type { ReferenceFile } from '../lib/hidden-protocol'
 import type { GuardReport } from '../types/guard'
+
+/**
+ * 节流版 localStorage。
+ *
+ * 问题：每次 zustand set 都会让 persist 中间件同步调用 localStorage.setItem，
+ * Chromium 渲染进程的 localStorage 底层是 LevelDB，写大块数据会同步阻塞主线程。
+ * 流式响应每 token 一次 setItem，主线程持续被锁定，UI 卡顿。
+ *
+ * 策略：leading + trailing throttle
+ *   - 距离上次写已超过 throttleMs：立即同步写（首次写不延迟）
+ *   - 节流窗口内：把新值放进 pending，启动一个 timer 在窗口结束时统一写
+ *   - 同一 key 的多次写在窗口内合并（只保留最后一次的值）
+ *   - beforeunload / pagehide / visibilitychange(hidden) 时强制 flush，防止应用关闭丢数据
+ *
+ * 副作用：内存里的 zustand state 永远是最新（同步），只是 localStorage 落盘最多延迟 throttleMs。
+ * 因为 React UI 订阅的是内存 state，对用户完全无感。
+ */
+function createThrottledLocalStorage(throttleMs: number) {
+  let pendingWrites: Record<string, string> = {}
+  let pendingTimer: ReturnType<typeof setTimeout> | null = null
+  let lastWriteAt = 0
+
+  const flush = () => {
+    if (pendingTimer) {
+      clearTimeout(pendingTimer)
+      pendingTimer = null
+    }
+    for (const [name, value] of Object.entries(pendingWrites)) {
+      try { localStorage.setItem(name, value) } catch { /* quota or disabled */ }
+    }
+    pendingWrites = {}
+    lastWriteAt = Date.now()
+  }
+
+  // 应用关闭/隐藏时兜底落盘，避免丢失最后 throttleMs 内的状态。
+  // Electron 关闭窗口会触发 beforeunload；pagehide 是更可靠的替代；
+  // visibilitychange(hidden) 处理切到后台的情况。
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', flush)
+    window.addEventListener('pagehide', flush)
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') flush()
+      })
+    }
+  }
+
+  return {
+    getItem: (name: string): string | null => {
+      // 优先返回挂起的写，保证 zustand 读到的是最新值（hydrate 等场景）
+      if (name in pendingWrites) return pendingWrites[name]
+      try { return localStorage.getItem(name) } catch { return null }
+    },
+    setItem: (name: string, value: string): void => {
+      const now = Date.now()
+      const elapsed = now - lastWriteAt
+
+      // Leading 路径：上次写已超过窗口期且当前没挂起的 timer → 直接同步写一次
+      if (elapsed >= throttleMs && !pendingTimer) {
+        delete pendingWrites[name]
+        try { localStorage.setItem(name, value) } catch { /* quota or disabled */ }
+        lastWriteAt = now
+        return
+      }
+
+      // Trailing 路径：窗口内，合并到 pending，最坏延迟 throttleMs 必落盘
+      pendingWrites[name] = value
+      if (!pendingTimer) {
+        const delay = Math.max(0, throttleMs - elapsed)
+        pendingTimer = setTimeout(flush, delay)
+      }
+    },
+    removeItem: (name: string): void => {
+      // remove 不节流：成本极低，且语义上应该立即生效
+      delete pendingWrites[name]
+      try { localStorage.removeItem(name) } catch { /* ignore */ }
+    },
+  }
+}
+
+// 100ms 是经验值：UI 反馈不会被察觉延迟，同时把"每 token"频率封顶到 10Hz。
+// 与 ChatPanel 的 raf 节流（≈60Hz）叠加后，实际 setItem 频率最多 10Hz。
+const throttledStorage = createThrottledLocalStorage(100)
 
 /**
  * 默认排版配置
@@ -354,14 +437,25 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'wordsmith-storage',
-      partialize: (state) => ({
-        settings: state.settings,
-        history: state.history,
-        customInstruction: state.customInstruction,
-        referenceFiles: state.referenceFiles,
-        workspace: state.workspace,
-        pinnedRounds: state.pinnedRounds,
-      }),
+      storage: createJSONStorage(() => throttledStorage),
+      partialize: (state) => {
+        // 流式期间不持久化 workspace.messages：messages 本身在持久化体积里占比不大
+        // （history 才是大头），但跳过仍能让每次 partialize 返回的对象稍小一点，
+        // 序列化更快，是一个低成本的优化。更关键的是把 streaming 字段强制持久化为 false，
+        // 避免崩溃后启动时挂在"流式中"的死状态。
+        const ws = state.workspace
+        const persistedWorkspace: WorkspaceState = ws.streaming
+          ? { ...ws, messages: [], streaming: false }
+          : { ...ws, streaming: false }
+        return {
+          settings: state.settings,
+          history: state.history,
+          customInstruction: state.customInstruction,
+          referenceFiles: state.referenceFiles,
+          workspace: persistedWorkspace,
+          pinnedRounds: state.pinnedRounds,
+        }
+      },
       merge: (persisted, current) => {
         const p = persisted as Partial<AppState>
         const merged = { ...current, ...p }

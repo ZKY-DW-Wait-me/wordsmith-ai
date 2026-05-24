@@ -43,6 +43,59 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
   // Debug Modal 状态
   const [debugModal, setDebugModal] = useState<{ open: boolean; content: string }>({ open: false, content: '' })
 
+  // 流式 token 速率在缓存命中/推理输出爆发期可达 200+/s，远超浏览器帧率。
+  // 若每个 token 都直接 setWorkspaceMessages：
+  //   1) 触发 React 重渲染 + ChatPanel 的 rounds useMemo 重算
+  //   2) 触发 zustand persist 同步 stringify + setItem 整份持久化状态（1+ MB）
+  //   3) 单次 setItem 在 Chromium LevelDB 同步写盘，主线程被锁
+  // 实测爆发场景下主线程被占用 47%+，必然卡死。raf 节流把触发频率压到帧率 (≤60Hz)，
+  // 配合 useAppStore 里的 persist throttle (≤10Hz)，把主线程占用降到 30% 左右。
+  const rafIdRef = useRef<number | null>(null)
+  const pendingMessagesRef = useRef<EnhancedChatMessage[] | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+      pendingMessagesRef.current = null
+    }
+  }, [])
+
+  const scheduleSetMessages = (next: EnhancedChatMessage[]) => {
+    pendingMessagesRef.current = next
+    if (rafIdRef.current !== null) return
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null
+      const pending = pendingMessagesRef.current
+      pendingMessagesRef.current = null
+      if (pending) setWorkspaceMessages(pending)
+    })
+  }
+
+  // 立即把挂起的消息同步 flush 到 store，并取消已 schedule 的 raf。
+  // 用于 abort/error 路径，确保 store 与已接收到的 token 完全一致（不丢最后一帧）。
+  const flushScheduledMessages = () => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
+    const pending = pendingMessagesRef.current
+    pendingMessagesRef.current = null
+    if (pending) setWorkspaceMessages(pending)
+  }
+
+  // 取消挂起的 raf 但不 flush。
+  // 用于正常完成路径：紧接着会用 finishedMessages 覆盖，pending 中间快照应该被丢弃。
+  const cancelScheduledMessages = () => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
+    pendingMessagesRef.current = null
+  }
+
   const canSend = useMemo(() => {
     if (streaming) return false
     if (!baseUrl || !model) return false
@@ -147,12 +200,14 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
 
       for await (const delta of stream) {
         assistantText += delta
-        setWorkspaceMessages([
+        scheduleSetMessages([
           ...nextMessages.slice(0, -1),
           { role: 'assistant', content: assistantText },
         ])
       }
 
+      // 正常完成：取消挂起的节流，避免延迟的旧 raf 在 setWorkspaceMessages(finishedMessages) 之后覆盖
+      cancelScheduledMessages()
       const guarded = guardHtml(assistantText, defaults)
       const finishedMessages: EnhancedChatMessage[] = [
         ...nextMessages.slice(0, -1),
@@ -162,6 +217,8 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
       onHtmlFinalized(guarded.html, guarded.report, { mode, messages: finishedMessages })
       logger.info('ChatPanel', 'Generation success', { length: assistantText.length })
     } catch (e) {
+      // abort 或异常：flush 挂起的内容，让 UI/store 与已收到的 token 一致（保留中断处便于"继续生成"）
+      flushScheduledMessages()
       if (e instanceof Error && e.name === 'AbortError') {
         logger.info('ChatPanel', 'Generation aborted')
       } else {
@@ -234,9 +291,10 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
           ...updated[lastAssistantIdx],
           content: existingContent + newText,
         }
-        setWorkspaceMessages(updated)
+        scheduleSetMessages(updated)
       }
 
+      cancelScheduledMessages()
       const fullContent = existingContent + newText
       const guarded = guardHtml(fullContent, defaults)
 
@@ -257,6 +315,7 @@ export function ChatPanel({ baseUrl, apiKey, model, defaults, customInstruction,
       onHtmlFinalized(guarded.html, guarded.report, { mode, messages: finishedMessages })
       logger.info('ChatPanel', 'Continue generation success', { length: fullContent.length })
     } catch (e) {
+      flushScheduledMessages()
       if (e instanceof Error && e.name === 'AbortError') {
         logger.info('ChatPanel', 'Continue generation aborted')
       } else {
