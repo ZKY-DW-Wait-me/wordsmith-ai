@@ -3,6 +3,14 @@
 
 > **Version Numbering**: Release versions use `vX.Y.Z`, beta branches use `vX.Y.Z-<feature>.N` to distinguish feature lines. Merged to main as the next release version.
 
+## v1.2.1
+### Fixed
+- Fixed UI freeze during long AI streaming sessions that previously required restarting the app. In burst-rate + multi-round scenarios, main-thread occupancy dropped from 47.8% to 35.2%, cumulative blocking time reduced by 59% (21s → 8.6s)
+  - ChatPanel: stream loop now uses `requestAnimationFrame` to throttle `setWorkspaceMessages`, lowering trigger frequency from "per token" to frame rate (≤60Hz)
+  - useAppStore: wrapped `localStorage` with a 100ms throttled storage, capping `setItem` at 10Hz; `beforeunload` / `pagehide` / `visibilitychange` force-flush as fallback
+  - partialize: skips `workspace.messages` during streaming and persists `streaming=false`, also fixes a latent bug where a crash mid-stream would leave the app stuck in "streaming" state on restart
+- Added `scripts/bench-stream-perf.mjs`: reproducible offline benchmark covering 4 scenarios (normal / burst / multi-round / extreme)
+
 ## v1.2.0
 ### Added
 - Added LaTeX formula editor page (sidebar Σ entry) with real-time KaTeX preview and 8 example formulas

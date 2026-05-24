@@ -50,7 +50,7 @@ WordSmith AI 是利用HTML格式，通过严格提示词限制，与AI对话，�
 
 
 ### 📥 如何安装
-1.  下载最新版本的 `.exe` 安装包（当前最新：**v1.2.0**）。
+1.  下载最新版本的 `.exe` 安装包（当前最新：**v1.2.1**）。
 2.  **OCR 功能**需额外导入引擎包，在「设置 → 高级 → OCR 图片识别」中操作：
     - **本地 OCR**：依次导入 `wordsmith-ocr-engine.zip`（OCR 引擎，约 3.9GB）和 `wordsmith-gpu-pack.zip`（GPU 加速包，约 543MB）。导入后自动启用 DirectML GPU 加速，无 GPU 时自动回退 CPU。
     - **云端 OCR**：填写对应服务商的 API Key，选择视觉模型即可使用。

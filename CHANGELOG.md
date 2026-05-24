@@ -3,6 +3,14 @@
 
 > **版本号规范**: 正式版使用 `vX.Y.Z`，beta 分支使用 `vX.Y.Z-<feature>.N` 区分功能线。合并至 main 后统一提升为下一个正式版号。
 
+## v1.2.1
+### Fixed
+- 修复 AI 流式响应长时间使用后 UI 卡顿、必须重启应用的问题。爆发速率 + 多轮累积场景下，主线程占用从 47.8% 降到 35.2%，累计阻塞时长减少 59%（21s → 8.6s）
+  - ChatPanel: 流式 token 循环用 `requestAnimationFrame` 节流 `setWorkspaceMessages`，把触发频率从"每 token"压到帧率（≤60Hz）
+  - useAppStore: 包装 `localStorage` 为 100ms throttled storage，`setItem` 频率封顶 10Hz；`beforeunload` / `pagehide` / `visibilitychange` 兜底强制 flush
+  - partialize: 流式期间跳过 `workspace.messages`，强制 `streaming=false` 持久化，附带修复"崩溃后挂死在流式中"的潜在 bug
+- 新增 `scripts/bench-stream-perf.mjs`：可重跑的离线基准测试，覆盖普通/爆发/多轮累积/极端 4 种场景
+
 ## v1.2.0
 ### Added
 - 新增 LaTeX 公式编辑器页面（侧边栏 Σ 入口），支持 KaTeX 实时预览 + 8 个示例公式

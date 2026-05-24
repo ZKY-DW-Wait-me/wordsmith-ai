@@ -49,7 +49,7 @@ Automatically checks for new versions on startup:
 - Opens download link in system default browser
 
 ### 📥 Installation Instructions
-1. Download the latest version of the .exe installer (Current latest: **v1.2.0**).
+1. Download the latest version of the .exe installer (Current latest: **v1.2.1**).
 2. **OCR functionality** requires additional engine packages, configured in "Settings → Advanced → OCR Image Recognition":
    - **Local OCR**: Import `wordsmith-ocr-engine.zip` (OCR engine, ~1.8GB) and `wordsmith-gpu-pack.zip` (GPU acceleration pack, ~317MB). DirectML GPU acceleration is enabled automatically after import; falls back to CPU when no GPU is available.
    - **Cloud OCR**: Enter the API Key from your service provider and select a vision model.
