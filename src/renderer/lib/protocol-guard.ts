@@ -1,4 +1,4 @@
-import { GuardReport } from '../types/guard'
+import type { GuardReport, GuardTypography } from '../types/guard'
 
 /**
  * HTML 排版协议守卫
@@ -7,17 +7,18 @@ import { GuardReport } from '../types/guard'
  * 主要功能：
  * 1. 单位统一转换为 pt
  * 2. 移除 style 标签和外链样式
- * 3. 确保表格边框和宽度属性
- * 4. 强制应用全局排版设置 (字体、字号)
+ * 3. 确保表格边框、宽度、居中对齐
+ * 4. 强制应用全局排版设置 (字体、字号、行距、字间距、字色等)
  * 5. 清洗 MathML 等不兼容标签
+ * 6. 段落级排版（首行缩进、段前/段后、对齐）在不覆盖已有内联样式的前提下应用
  * 
  * @param html 原始 HTML 字符串
  * @param defaults 全局排版默认值
- * @returns 清洗后的 HTML 和处理报告
+ * @returns 清洗后的 HTML（包含完整 <body>）和处理报告
  */
 export function guardHtml(
   html: string,
-  defaults: { fontFamily: string; fontSizePt: number },
+  defaults: GuardTypography,
 ): { html: string; report: GuardReport } {
   const parser = new DOMParser()
   const doc = parser.parseFromString(html, 'text/html')
@@ -44,7 +45,7 @@ export function guardHtml(
   doc.querySelectorAll('*').forEach((el) => {
     const style = el.getAttribute('style')
     if (style) {
-      let newStyle = style.replace(/([\d.]+)px/g, (_, num) => {
+      const newStyle = style.replace(/([\d.]+)px/g, (_, num) => {
         report.convertedUnits++
         return `${Number(num) * 0.75}pt`
       })
@@ -55,41 +56,63 @@ export function guardHtml(
   // 3. Process Tables
   doc.querySelectorAll('table').forEach((table) => {
     report.tablesProcessed++
+    // 表格宽度与居中对齐按协议固定
+    table.setAttribute('align', 'center')
+    table.style.width = '440pt'
     // Ensure borders are visible in Word
     if (!table.style.borderCollapse) table.style.borderCollapse = 'collapse'
-    // Default border if missing
-    if (!table.style.border) table.style.border = '1px solid #000'
+    // Default border if missing（协议要求 pt 单位）
+    if (!table.style.border) table.style.border = '1pt solid #000'
     
     // Process cells
     table.querySelectorAll('td, th').forEach((cell) => {
       const el = cell as HTMLElement
-      if (!el.style.border) el.style.border = '1px solid #000'
+      if (!el.style.border) el.style.border = '1pt solid #000'
       if (!el.style.padding) el.style.padding = '4pt'
     })
   })
 
   // 4. Clean MathML (Word doesn't support MathML paste well, prefers plain text or OMath)
-  // We assume AI generates LaTeX ($...$) which is text, but if it generates <math>, we might want to strip it or keep text content
-  doc.querySelectorAll('math').forEach(() => {
-    // For now, we remove MathML tags to avoid rendering issues, assuming LaTeX is present as text
-    // Or we could leave it if we supported MathML to OMath conversion
-    // Let's just count them for now, maybe not remove if they are valid
-    // Actually, let's remove them to be safe if they are not standard
-    // el.remove() 
+  doc.querySelectorAll('math').forEach((el) => {
+    const text = el.textContent || ''
+    el.replaceWith(text)
     report.mathMlNodesRemoved++
   })
 
-  // 5. Enforce Body Styles
-  doc.body.style.fontFamily = `'${defaults.fontFamily}', 'SimSun', serif`
+  // 5. 强制 body 排版（字体 / 字号 / 行距 / 字间距 / 字色）
+  const cnFont = defaults.fontFamily || 'SimSun'
+  doc.body.style.fontFamily = defaults.fontFamilyWestern
+    ? `'${defaults.fontFamilyWestern}', '${cnFont}', 'SimSun', serif`
+    : `'${cnFont}', 'SimSun', serif`
   doc.body.style.fontSize = `${defaults.fontSizePt}pt`
-  doc.body.style.lineHeight = '1.5'
+  // 行距：固定模式输出磅值，倍数模式输出无单位数值
+  const hasFixedLineHeight = defaults.lineHeightMode === 'fixed' && defaults.lineHeightValue != null
+  doc.body.style.lineHeight = hasFixedLineHeight
+    ? `${defaults.lineHeightValue}pt`
+    : String(defaults.lineHeightValue ?? 1.5)
+  if (defaults.letterSpacingPt != null) doc.body.style.letterSpacing = `${defaults.letterSpacingPt}pt`
+  if (defaults.color) doc.body.style.color = defaults.color
   doc.body.style.margin = '0'
   doc.body.style.padding = '0'
   report.enforcedBodyStyle = true
 
+  // 6. 段落级排版：首行缩进、段前 / 段后、对齐 —— 仅作用于 <p>，不动标题；不覆盖已有内联样式
+  const indentPt =
+    defaults.firstLineIndentValue != null
+      ? defaults.firstLineIndentUnit === 'pt'
+        ? defaults.firstLineIndentValue
+        : defaults.firstLineIndentValue * defaults.fontSizePt
+      : null
+  doc.body.querySelectorAll('p').forEach((p) => {
+    const el = p as HTMLElement
+    if (indentPt != null && !el.style.textIndent) el.style.textIndent = `${indentPt}pt`
+    if (defaults.paragraphSpaceBeforePt != null && !el.style.marginTop) el.style.marginTop = `${defaults.paragraphSpaceBeforePt}pt`
+    if (defaults.paragraphSpaceAfterPt != null && !el.style.marginBottom) el.style.marginBottom = `${defaults.paragraphSpaceAfterPt}pt`
+    if (defaults.textAlign && !el.style.textAlign) el.style.textAlign = defaults.textAlign
+  })
+
   return {
-    html: doc.body.innerHTML,
+    html: doc.body.outerHTML,
     report,
   }
 }
-

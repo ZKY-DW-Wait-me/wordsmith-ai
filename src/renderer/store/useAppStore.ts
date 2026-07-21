@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { AIModelConfig, ChatMessage, PinnedRound, PromptMode, RecentModels, VlmOcrConfig } from '../types/ai'
 import type { ReferenceFile } from '../lib/hidden-protocol'
-import type { GuardReport } from '../types/guard'
+import type { GuardReport, GuardTypography } from '../types/guard'
 
 /**
  * 节流版 localStorage。
@@ -88,12 +88,9 @@ function createThrottledLocalStorage(throttleMs: number) {
 const throttledStorage = createThrottledLocalStorage(100)
 
 /**
- * 默认排版配置
+ * 默认排版配置（兼容旧名，实际定义在 types/guard）
  */
-export interface AIDefaultTypography {
-  fontFamily: string
-  fontSizePt: number
-}
+export type AIDefaultTypography = GuardTypography
 
 /**
  * 增强的聊天消息，包含 Debug 信息
@@ -150,6 +147,7 @@ export interface AppSettings {
   providerApiKeys: Record<string, string>
   acceleratorPath: string | null
   contextMaxRounds: number
+  mathTarget: 'word' | 'wps'
 }
 
 /**
@@ -223,7 +221,20 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       settings: {
         ai: { baseUrl: 'https://api.deepseek.com', apiKey: '', model: 'deepseek-chat' },
-        typography: { fontFamily: 'SimSun', fontSizePt: 12 },
+        typography: {
+          fontFamily: 'SimSun',
+          fontSizePt: 12,
+          fontFamilyWestern: 'Times New Roman',
+          lineHeightMode: 'multiple',
+          lineHeightValue: 1.5,
+          letterSpacingPt: 0,
+          paragraphSpaceBeforePt: 0,
+          paragraphSpaceAfterPt: 0,
+          firstLineIndentValue: 2,
+          firstLineIndentUnit: 'char',
+          textAlign: 'justify',
+          color: '#000000',
+        },
         templateId: 'default',
         timeout: 60000,
         eyeCareMode: false,
@@ -235,6 +246,7 @@ export const useAppStore = create<AppState>()(
         providerApiKeys: {},
         acceleratorPath: null,
         contextMaxRounds: 10,
+        mathTarget: 'word',
       },
       history: [],
       customInstruction: '',
@@ -481,6 +493,10 @@ export const useAppStore = create<AppState>()(
             providerApiKeys: {
               ...(current as AppState).settings.providerApiKeys,
               ...(p.settings.providerApiKeys || {}),
+            },
+            typography: {
+              ...(current as AppState).settings.typography,
+              ...(p.settings.typography || {}),
             },
           }
         }

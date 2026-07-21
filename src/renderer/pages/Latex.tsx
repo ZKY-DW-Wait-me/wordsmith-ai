@@ -123,6 +123,7 @@ const EXAMPLES = [
 export default function LatexPage() {
   const t = useI18nStore((s) => s.t)
   const settings = useAppStore((s) => s.settings)
+  const updateSettings = useAppStore((s) => s.updateSettings)
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
   const [copying, setCopying] = useState(false)
@@ -190,12 +191,22 @@ export default function LatexPage() {
     }
   }, [input, renderPreview])
 
-  // 复制 UnicodeMath 文本
-  const handleCopyUnicodeMath = async () => {
+  // 去掉外层 $ / $$ 包裹
+  const stripMathDelimiters = (s: string): string => {
+    let v = s.trim()
+    if (v.startsWith('$$') && v.endsWith('$$')) v = v.slice(2, -2).trim()
+    else if (v.startsWith('$') && v.endsWith('$')) v = v.slice(1, -1).trim()
+    return v
+  }
+
+  // 复制公式文本 — Word 版输出 UnicodeMath（空格构建），WPS 版输出原始 LaTeX（Ctrl+= 构建）
+  const handleCopyMath = async () => {
     if (!input.trim()) return
     try {
-      const um = latexToUnicodeMath(input)
-      await navigator.clipboard.writeText(um)
+      const text = settings.mathTarget === 'wps'
+        ? stripMathDelimiters(input)
+        : latexToUnicodeMath(input)
+      await navigator.clipboard.writeText(text)
       toast({ title: t.latex.copySuccess })
     } catch {
       toast({ title: t.latex.copyFailed, variant: 'destructive' })
@@ -375,8 +386,27 @@ export default function LatexPage() {
 
         {/* 右栏：预览 + 操作 */}
         <div className="flex w-1/2 flex-col gap-3">
-          <div className="flex items-center">
+          <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-zinc-700">{t.latex.preview}</h2>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-zinc-400">{t.latex.mathTargetLabel}</span>
+              <div className="flex items-center gap-0.5 rounded-lg bg-zinc-100 p-0.5">
+                {(['word', 'wps'] as const).map((target) => (
+                  <button
+                    key={target}
+                    onClick={() => updateSettings({ mathTarget: target })}
+                    className={cn(
+                      'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                      settings.mathTarget === target
+                        ? 'bg-white text-zinc-900 shadow-sm'
+                        : 'text-zinc-500 hover:text-zinc-700'
+                    )}
+                  >
+                    {target === 'word' ? 'Word' : 'WPS'}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* KaTeX 渲染区 */}
@@ -401,7 +431,7 @@ export default function LatexPage() {
           {/* 操作按钮 */}
           <div className="flex gap-2">
             <button
-              onClick={handleCopyUnicodeMath}
+              onClick={handleCopyMath}
               disabled={!input.trim()}
               className={cn(
                 'flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all',
@@ -412,8 +442,8 @@ export default function LatexPage() {
             >
               <Copy size={16} />
               <div className="flex flex-col items-start">
-                <span>{t.latex.copyUnicodeMath}</span>
-                <span className="text-[10px] font-normal opacity-70">{t.latex.copyUnicodeMathDesc}</span>
+                <span>{settings.mathTarget === 'wps' ? t.latex.copyLatex : t.latex.copyUnicodeMath}</span>
+                <span className="text-[10px] font-normal opacity-70">{settings.mathTarget === 'wps' ? t.latex.copyLatexDesc : t.latex.copyUnicodeMathDesc}</span>
               </div>
             </button>
 

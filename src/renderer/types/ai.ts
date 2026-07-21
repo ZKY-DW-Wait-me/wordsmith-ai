@@ -7,10 +7,8 @@ export interface ChatMessage {
 
 export type PromptMode = 'generate' | 'fix'
 
-export interface AIDefaultTypography {
-  fontFamily: string
-  fontSizePt: number
-}
+import type { GuardTypography } from './guard'
+export type AIDefaultTypography = GuardTypography
 
 export interface AIModelConfig {
   baseUrl: string

@@ -3,12 +3,13 @@ import {
   FileText, Upload, X, Copy, Code, RefreshCw,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
   Sparkles, ArrowRight, Maximize2, ExternalLink, AlertCircle, FileCode2,
-  Loader2, Pencil, BookmarkPlus
+  Loader2, Pencil, BookmarkPlus, SlidersHorizontal
 } from 'lucide-react'
 import { guardHtml } from '../lib/protocol-guard'
 import { getTemplateById } from '../lib/templates'
 import { ChatPanel } from '../components/business/ChatPanel'
 import { PinnedRoundsDialog } from '../components/business/PinnedRoundsDialog'
+import { TypographyPanel } from '../components/business/TypographyPanel'
 import { useAppStore } from '../store/useAppStore'
 import { useI18n } from '../store/useI18nStore'
 import { Button } from '../components/ui/button'
@@ -41,6 +42,7 @@ export default function NewPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [showSource, setShowSource] = useState(false)
+  const [showTypography, setShowTypography] = useState(false)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [showVbaMacro, setShowVbaMacro] = useState(false)
   const [ocrLoading, setOcrLoading] = useState(false)
@@ -54,8 +56,19 @@ export default function NewPage() {
 
   const activeTypography = useMemo(
     () => ({
-      fontFamily: settings.typography.fontFamily || template.style.fontFamily,
-      fontSizePt: settings.typography.fontSizePt || template.style.fontSizePt,
+      fontFamily: settings.typography.fontFamily ?? template.style.fontFamily,
+      fontSizePt: settings.typography.fontSizePt ?? template.style.fontSizePt,
+      fontFamilyWestern: settings.typography.fontFamilyWestern,
+      lineHeightMode: settings.typography.lineHeightMode ?? 'multiple',
+      // 模板提供的是倍数行距默认值；用户未设置时回退到模板，再回退到 1.5
+      lineHeightValue: settings.typography.lineHeightValue ?? template.style.lineHeight ?? 1.5,
+      letterSpacingPt: settings.typography.letterSpacingPt,
+      paragraphSpaceBeforePt: settings.typography.paragraphSpaceBeforePt,
+      paragraphSpaceAfterPt: settings.typography.paragraphSpaceAfterPt ?? template.style.paragraphSpacing,
+      firstLineIndentValue: settings.typography.firstLineIndentValue,
+      firstLineIndentUnit: settings.typography.firstLineIndentUnit,
+      textAlign: settings.typography.textAlign,
+      color: settings.typography.color,
     }),
     [settings.typography, template]
   )
@@ -246,6 +259,18 @@ export default function NewPage() {
     }
   }
 
+
+
+  const refreshPreview = () => {
+    const guarded = guardHtml(htmlDraft, activeTypography)
+    updateWorkspace({ finalHtml: guarded.html, guardReport: guarded.report })
+  }
+
+  // finalHtml 现在包含完整 <body>，预览/新窗口需要包装成完整 HTML 文档；
+  // 全屏预览用 div 替换 body 标签，避免在 div 中嵌套 <body>
+  const previewSrcDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>${finalHtml}</html>`
+  const fullscreenHtml = finalHtml.replace('<body', '<div').replace('</body>', '</div>')
+
   const openPreviewWindow = () => {
     const previewWindow = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no')
     if (previewWindow) {
@@ -253,23 +278,17 @@ export default function NewPage() {
         <!DOCTYPE html>
         <html>
         <head>
+          <meta charset="utf-8">
           <title>WordSmith 预览</title>
           <style>
             body { margin: 0; padding: 24px; background: #fff; }
           </style>
         </head>
-        <body>
-          ${finalHtml}
-        </body>
+        ${finalHtml}
         </html>
       `)
       previewWindow.document.close()
     }
-  }
-
-  const refreshPreview = () => {
-    const guarded = guardHtml(htmlDraft, activeTypography)
-    updateWorkspace({ finalHtml: guarded.html, guardReport: guarded.report })
   }
 
   return (
@@ -529,6 +548,15 @@ export default function NewPage() {
               <span className="text-xs font-medium text-zinc-500">预览</span>
               <div className="ml-4 flex items-center gap-1">
                 <Button
+                  variant={showTypography ? 'secondary' : 'ghost'}
+                  size="icon"
+                  onClick={() => setShowTypography(!showTypography)}
+                  className="h-7 w-7"
+                  title={t.typography.title}
+                >
+                  <SlidersHorizontal size={14} />
+                </Button>
+                <Button
                   variant={showSource ? 'secondary' : 'ghost'}
                   size="icon"
                   onClick={() => setShowSource(!showSource)}
@@ -592,6 +620,9 @@ export default function NewPage() {
               <Copy size={14} />
               复制到剪贴板
             </Button>
+
+            {/* 排版参数折叠面板（默认折叠，不挤占现有布局） */}
+            {showTypography && <TypographyPanel />}
           </div>
 
           {/* Preview Area */}
@@ -608,7 +639,7 @@ export default function NewPage() {
                   title="word-preview"
                   className="h-full min-h-[400px] w-full border-0"
                   sandbox="allow-same-origin"
-                  srcDoc={finalHtml}
+                  srcDoc={previewSrcDoc}
                 />
               </div>
             )}
@@ -670,7 +701,7 @@ export default function NewPage() {
             <div className="mx-auto max-w-5xl rounded-xl bg-white p-8 shadow-xl">
               <div
                 className="prose prose-zinc max-w-none"
-                dangerouslySetInnerHTML={{ __html: finalHtml }}
+                dangerouslySetInnerHTML={{ __html: fullscreenHtml }}
               />
             </div>
           </div>

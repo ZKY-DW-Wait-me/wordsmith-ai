@@ -14,10 +14,11 @@ describe('protocol-guard', () => {
   it('enforces body style and converts px to pt', () => {
     const input = `<body style="margin:8px; padding:4px; font-family:Arial; font-size:16px;"><p style="margin-top:8px;">x</p></body>`
     const out = guardHtml(input, { fontFamily: 'SimSun', fontSizePt: 12 })
-    expect(out.html).toContain("font-family:'SimSun'")
-    expect(out.html).toContain('font-size:12pt')
-    expect(out.html).toContain('margin:0')
-    expect(out.html).toContain('padding:0')
+    // jsdom 序列化时会用双引号包裹字体名并保留冒号后的空格，故用更宽松的断言
+    expect(out.html).toMatch(/font-family:\s*(?:&quot;|")SimSun(?:&quot;|")/)
+    expect(out.html).toContain('font-size: 12pt')
+    expect(out.html).toMatch(/margin:\s*0/)
+    expect(out.html).toMatch(/padding:\s*0/)
     expect(out.report.convertedUnits).toBeGreaterThan(0)
     expect(out.html).toContain('margin-top:6pt')
   })
@@ -27,8 +28,8 @@ describe('protocol-guard', () => {
     const out = guardHtml(input, { fontFamily: 'SimSun', fontSizePt: 12 })
     expect(out.report.tablesProcessed).toBe(1)
     expect(out.html).toContain('align="center"')
-    expect(out.html).toContain('width:440pt')
-    expect(out.html).toContain('border-collapse:collapse')
+    expect(out.html).toContain('width: 440pt')
+    expect(out.html).toMatch(/border-collapse:\s*collapse/)
   })
 
   it('strips MathML tags but keeps text content', () => {
@@ -39,4 +40,3 @@ describe('protocol-guard', () => {
     expect(out.html).toContain('x+y')
   })
 })
-

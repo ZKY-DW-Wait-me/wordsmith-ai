@@ -3,10 +3,9 @@
  * 这些规则对用户不可见，但会自动注入到每次 AI 请求中
  */
 
-export interface TypographyDefaults {
-  fontFamily: string
-  fontSizePt: number
-}
+import type { GuardTypography } from '../types/guard'
+
+export type TypographyDefaults = GuardTypography
 
 /**
  * 6 条核心排版协议规则
@@ -52,7 +51,34 @@ export function buildHiddenSystemPrompt(
 
   // 2. 核心排版协议（隐藏规则）
   parts.push('【排版协议 - 必须严格遵守】')
-  parts.push(`Body 样式固定为：<body style="margin:0; padding:0; font-family:'${defaults.fontFamily}'; font-size:${defaults.fontSizePt}pt;">`)
+
+  const lineHeight = defaults.lineHeightMode === 'fixed' && defaults.lineHeightValue != null
+    ? `${defaults.lineHeightValue}pt`
+    : `${defaults.lineHeightValue ?? 1.5}`
+  const bodyStyles = [
+    'margin:0',
+    'padding:0',
+    `font-family:'${defaults.fontFamily}'`,
+    `font-size:${defaults.fontSizePt}pt`,
+    `line-height:${lineHeight}`,
+  ]
+  if (defaults.letterSpacingPt != null) bodyStyles.push(`letter-spacing:${defaults.letterSpacingPt}pt`)
+  if (defaults.color) bodyStyles.push(`color:${defaults.color}`)
+  parts.push(`Body 样式固定为：<body style="${bodyStyles.join('; ')};">`)
+
+  // 段落级排版规则（如果用户在排版面板中做了额外设置，通知 AI 一并遵守）
+  const paraRules: string[] = []
+  if (defaults.paragraphSpaceBeforePt != null) paraRules.push(`段前间距 ${defaults.paragraphSpaceBeforePt}pt`)
+  if (defaults.paragraphSpaceAfterPt != null) paraRules.push(`段后间距 ${defaults.paragraphSpaceAfterPt}pt`)
+  if (defaults.firstLineIndentValue != null) {
+    const unit = defaults.firstLineIndentUnit === 'pt' ? 'pt' : '字符'
+    paraRules.push(`首行缩进 ${defaults.firstLineIndentValue}${unit}`)
+  }
+  if (defaults.textAlign) paraRules.push(`段落对齐 ${defaults.textAlign}`)
+  if (paraRules.length) {
+    parts.push(`段落默认样式：${paraRules.join('，')}。除非用户另有要求，否则不要覆盖这些默认值。`)
+  }
+
   CORE_PROTOCOL_RULES.forEach((rule, index) => {
     parts.push(`${index + 1}. ${rule}`)
   })
