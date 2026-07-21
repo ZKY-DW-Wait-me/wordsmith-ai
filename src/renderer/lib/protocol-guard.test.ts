@@ -39,4 +39,41 @@ describe('protocol-guard', () => {
     expect(out.html).not.toContain('<math')
     expect(out.html).toContain('x+y')
   })
+
+  it('returns a full <body> wrapper so enforced body styles survive', () => {
+    const out = guardHtml(`<p>hi</p>`, { fontFamily: 'SimSun', fontSizePt: 14 })
+    expect(out.html).toMatch(/^<body\b/)
+    expect(out.html).toMatch(/<\/body>$/)
+    expect(out.html).toContain('font-size: 14pt')
+  })
+
+  it('applies paragraph-level typography without overriding existing inline styles', () => {
+    const input = `<body><p>plain</p><p style="text-align:left; text-indent:99pt;">kept</p></body>`
+    const out = guardHtml(input, {
+      fontFamily: 'SimSun',
+      fontSizePt: 12,
+      firstLineIndentValue: 2,
+      firstLineIndentUnit: 'char',
+      textAlign: 'justify',
+      paragraphSpaceAfterPt: 6,
+    })
+    // 第一个 <p> 应被套用默认值：2 字符 * 12pt = 24pt 首行缩进 + 两端对齐 + 段后 6pt
+    expect(out.html).toContain('text-indent: 24pt')
+    expect(out.html).toContain('text-align: justify')
+    expect(out.html).toContain('margin-bottom: 6pt')
+    // 第二个 <p> 已有内联样式，不应被覆盖
+    expect(out.html).toContain('text-indent: 99pt')
+    expect(out.html).toContain('text-align: left')
+  })
+
+  it('renders fixed line-height in pt and multiple line-height unitless', () => {
+    const fixed = guardHtml(`<p>x</p>`, {
+      fontFamily: 'SimSun', fontSizePt: 12, lineHeightMode: 'fixed', lineHeightValue: 28,
+    })
+    expect(fixed.html).toContain('line-height: 28pt')
+    const mult = guardHtml(`<p>x</p>`, {
+      fontFamily: 'SimSun', fontSizePt: 12, lineHeightMode: 'multiple', lineHeightValue: 1.75,
+    })
+    expect(mult.html).toMatch(/line-height:\s*1\.75(?!pt)/)
+  })
 })

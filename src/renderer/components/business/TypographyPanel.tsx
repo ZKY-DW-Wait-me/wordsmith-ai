@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useI18n } from '../../store/useI18nStore'
 
@@ -30,17 +31,51 @@ const fieldCls =
   'w-full rounded-lg border-0 bg-zinc-100 px-2 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-300'
 const labelCls = 'mb-1 block text-[10px] font-medium text-zinc-500'
 
+/**
+ * 数字输入：用本地字符串缓冲，允许中途清空/重输，不会因受控值立即弹回旧值。
+ * 仅在输入是合法数字时才向上提交；失焦时把显示值规整回真实值。
+ */
+function NumberField({
+  value,
+  onCommit,
+  min,
+  step,
+}: {
+  value: number
+  onCommit: (n: number) => void
+  min?: number
+  step?: number
+}) {
+  const [draft, setDraft] = useState(String(value))
+
+  // 外部值变化（切换模式/重置等）时同步，避免显示与真实值脱节
+  useEffect(() => {
+    setDraft(String(value))
+  }, [value])
+
+  return (
+    <input
+      type="number"
+      min={min}
+      step={step}
+      className={fieldCls}
+      value={draft}
+      onChange={(e) => {
+        const raw = e.target.value
+        setDraft(raw)
+        const n = Number(raw)
+        if (raw !== '' && !Number.isNaN(n)) onCommit(n)
+      }}
+      onBlur={() => setDraft(String(value))}
+    />
+  )
+}
+
 export function TypographyPanel() {
   const t = useI18n()
   const tt = t.typography
   const typo = useAppStore((s) => s.settings.typography)
   const updateTypography = useAppStore((s) => s.updateTypography)
-
-  // 数字输入：空或非法时保留旧值，避免 NaN 污染
-  const num = (raw: string, fallback: number) => {
-    const n = Number(raw)
-    return raw === '' || Number.isNaN(n) ? fallback : n
-  }
 
   const fixedLine = typo.lineHeightMode === 'fixed'
 
@@ -78,25 +113,21 @@ export function TypographyPanel() {
         {/* 字号 */}
         <div>
           <label className={labelCls}>{tt.fontSize}（pt）</label>
-          <input
-            type="number"
+          <NumberField
             min={1}
             step={0.5}
-            className={fieldCls}
             value={typo.fontSizePt}
-            onChange={(e) => updateTypography({ fontSizePt: num(e.target.value, typo.fontSizePt) })}
+            onCommit={(n) => updateTypography({ fontSizePt: n })}
           />
         </div>
 
         {/* 字间距 */}
         <div>
           <label className={labelCls}>{tt.letterSpacing}（pt）</label>
-          <input
-            type="number"
+          <NumberField
             step={0.5}
-            className={fieldCls}
             value={typo.letterSpacingPt ?? 0}
-            onChange={(e) => updateTypography({ letterSpacingPt: num(e.target.value, typo.letterSpacingPt ?? 0) })}
+            onCommit={(n) => updateTypography({ letterSpacingPt: n })}
           />
         </div>
 
@@ -116,52 +147,44 @@ export function TypographyPanel() {
         {/* 行距值 */}
         <div>
           <label className={labelCls}>{fixedLine ? `${tt.lineHeight}（pt）` : tt.lineHeightTimes}</label>
-          <input
-            type="number"
+          <NumberField
             min={fixedLine ? 1 : 0.5}
             step={fixedLine ? 1 : 0.1}
-            className={fieldCls}
             value={typo.lineHeightValue ?? 1.5}
-            onChange={(e) => updateTypography({ lineHeightValue: num(e.target.value, typo.lineHeightValue ?? 1.5) })}
+            onCommit={(n) => updateTypography({ lineHeightValue: n })}
           />
         </div>
 
         {/* 段前 */}
         <div>
           <label className={labelCls}>{tt.spaceBefore}（pt）</label>
-          <input
-            type="number"
+          <NumberField
             min={0}
             step={1}
-            className={fieldCls}
             value={typo.paragraphSpaceBeforePt ?? 0}
-            onChange={(e) => updateTypography({ paragraphSpaceBeforePt: num(e.target.value, typo.paragraphSpaceBeforePt ?? 0) })}
+            onCommit={(n) => updateTypography({ paragraphSpaceBeforePt: n })}
           />
         </div>
 
         {/* 段后 */}
         <div>
           <label className={labelCls}>{tt.spaceAfter}（pt）</label>
-          <input
-            type="number"
+          <NumberField
             min={0}
             step={1}
-            className={fieldCls}
             value={typo.paragraphSpaceAfterPt ?? 0}
-            onChange={(e) => updateTypography({ paragraphSpaceAfterPt: num(e.target.value, typo.paragraphSpaceAfterPt ?? 0) })}
+            onCommit={(n) => updateTypography({ paragraphSpaceAfterPt: n })}
           />
         </div>
 
         {/* 首行缩进值 */}
         <div>
           <label className={labelCls}>{tt.firstLineIndent}</label>
-          <input
-            type="number"
+          <NumberField
             min={0}
             step={typo.firstLineIndentUnit === 'pt' ? 1 : 0.5}
-            className={fieldCls}
             value={typo.firstLineIndentValue ?? 0}
-            onChange={(e) => updateTypography({ firstLineIndentValue: num(e.target.value, typo.firstLineIndentValue ?? 0) })}
+            onCommit={(n) => updateTypography({ firstLineIndentValue: n })}
           />
         </div>
 

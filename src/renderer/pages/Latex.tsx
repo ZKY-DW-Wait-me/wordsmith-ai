@@ -191,11 +191,16 @@ export default function LatexPage() {
     }
   }, [input, renderPreview])
 
-  // 去掉外层 $ / $$ 包裹
+  // 去掉外层 $ / $$ 包裹（仅当整串是单个公式时；内部还含分隔符则保持原样，避免误伤多公式/混排文本）
   const stripMathDelimiters = (s: string): string => {
-    let v = s.trim()
-    if (v.startsWith('$$') && v.endsWith('$$')) v = v.slice(2, -2).trim()
-    else if (v.startsWith('$') && v.endsWith('$')) v = v.slice(1, -1).trim()
+    const v = s.trim()
+    if (v.startsWith('$$') && v.endsWith('$$') && v.length >= 4) {
+      const inner = v.slice(2, -2)
+      if (!inner.includes('$$')) return inner.trim()
+    } else if (v.startsWith('$') && v.endsWith('$') && v.length >= 2) {
+      const inner = v.slice(1, -1)
+      if (!inner.includes('$')) return inner.trim()
+    }
     return v
   }
 

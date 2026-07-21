@@ -266,14 +266,21 @@ export default function NewPage() {
     updateWorkspace({ finalHtml: guarded.html, guardReport: guarded.report })
   }
 
-  // finalHtml 现在包含完整 <body>，预览/新窗口需要包装成完整 HTML 文档；
-  // 全屏预览用 div 替换 body 标签，避免在 div 中嵌套 <body>
+  // finalHtml 现在包含完整 <body>。把 <body ...> 安全转成 <div ...> 以便内联嵌入，
+  // 兼容老数据（无 body 包裹时原样返回），避免脆弱的字符串 replace 误伤正文里的 "<body" 文本
+  const bodyToDiv = (html: string) => {
+    const m = html.match(/^\s*<body([^>]*)>([\s\S]*)<\/body>\s*$/i)
+    return m ? `<div${m[1]}>${m[2]}</div>` : html
+  }
+
+  // 预览/新窗口需要包装成完整 HTML 文档
   const previewSrcDoc = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>${finalHtml}</html>`
-  const fullscreenHtml = finalHtml.replace('<body', '<div').replace('</body>', '</div>')
+  const fullscreenHtml = bodyToDiv(finalHtml)
 
   const openPreviewWindow = () => {
     const previewWindow = window.open('', '_blank', 'width=800,height=600,menubar=no,toolbar=no')
     if (previewWindow) {
+      // 用外层 body 提供 24px 内边距，正文转 div 嵌入 —— 否则正文 body 的 padding:0 会盖掉外层内边距
       previewWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -284,7 +291,7 @@ export default function NewPage() {
             body { margin: 0; padding: 24px; background: #fff; }
           </style>
         </head>
-        ${finalHtml}
+        <body>${bodyToDiv(finalHtml)}</body>
         </html>
       `)
       previewWindow.document.close()
