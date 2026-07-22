@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../../store/useAppStore'
 import { useI18n } from '../../store/useI18nStore'
 
@@ -32,8 +32,9 @@ const fieldCls =
 const labelCls = 'mb-1 block text-[10px] font-medium text-zinc-500'
 
 /**
- * 数字输入：用本地字符串缓冲，允许中途清空/重输，不会因受控值立即弹回旧值。
- * 仅在输入是合法数字时才向上提交；失焦时把显示值规整回真实值。
+ * 数字输入：用本地字符串缓冲，允许中途清空/重输小数（如 "1." → "1.5"），
+ * 不会因受控值在每次提交后立即弹回，从而吃掉正在输入的小数点。
+ * 聚焦期间不被外部值覆盖；失焦时把显示值规整回真实值。
  */
 function NumberField({
   value,
@@ -47,10 +48,11 @@ function NumberField({
   step?: number
 }) {
   const [draft, setDraft] = useState(String(value))
+  const focusedRef = useRef(false)
 
-  // 外部值变化（切换模式/重置等）时同步，避免显示与真实值脱节
+  // 仅在未聚焦时同步外部值（切换模式/重置等），避免打断正在进行的输入
   useEffect(() => {
-    setDraft(String(value))
+    if (!focusedRef.current) setDraft(String(value))
   }, [value])
 
   return (
@@ -60,13 +62,17 @@ function NumberField({
       step={step}
       className={fieldCls}
       value={draft}
+      onFocus={() => { focusedRef.current = true }}
       onChange={(e) => {
         const raw = e.target.value
         setDraft(raw)
         const n = Number(raw)
         if (raw !== '' && !Number.isNaN(n)) onCommit(n)
       }}
-      onBlur={() => setDraft(String(value))}
+      onBlur={() => {
+        focusedRef.current = false
+        setDraft(String(value))
+      }}
     />
   )
 }
