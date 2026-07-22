@@ -9,12 +9,12 @@ export interface LogEntry {
   level: LogLevel
   module: string
   message: string
-  meta?: any
+  meta?: unknown
 }
 
 interface LoggerState {
   logs: LogEntry[]
-  addLog: (level: LogLevel, module: string, message: string, meta?: any) => void
+  addLog: (level: LogLevel, module: string, message: string, meta?: unknown) => void
   clearLogs: () => void
   exportLogs: () => string
 }
@@ -54,19 +54,19 @@ export const useLoggerStore = create<LoggerState>()(
 )
 
 class LoggerService {
-  info(module: string, message: string, meta?: any) {
+  info(module: string, message: string, meta?: unknown) {
     useLoggerStore.getState().addLog('info', module, message, meta)
   }
 
-  warn(module: string, message: string, meta?: any) {
+  warn(module: string, message: string, meta?: unknown) {
     useLoggerStore.getState().addLog('warn', module, message, meta)
   }
 
-  error(module: string, message: string, meta?: any) {
+  error(module: string, message: string, meta?: unknown) {
     useLoggerStore.getState().addLog('error', module, message, meta)
   }
 
-  action(module: string, message: string, meta?: any) {
+  action(module: string, message: string, meta?: unknown) {
     useLoggerStore.getState().addLog('action', module, message, meta)
   }
 }

@@ -68,15 +68,16 @@ export function MacroGenerator() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    ;(globalThis as any).Prism = Prism
+    (globalThis as Record<string, unknown>).Prism = Prism
     import('prismjs/components/prism-vbnet')
       .catch(() => undefined)
       .finally(() => setReady(true))
   }, [])
 
   const highlighted = useMemo(() => {
-    const language = Prism.languages.vbnet ?? Prism.languages.plain
-    return Prism.highlight(VBA_CODE, language, language === Prism.languages.vbnet ? 'vbnet' : 'plain')
+    const vbnet = ready ? Prism.languages.vbnet : undefined
+    const language = vbnet ?? Prism.languages.plain
+    return Prism.highlight(VBA_CODE, language, language === vbnet ? 'vbnet' : 'plain')
   }, [ready])
 
   const copy = async () => {

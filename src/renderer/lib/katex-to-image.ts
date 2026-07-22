@@ -309,7 +309,6 @@ async function svgFallback(
   cropPadding: number,
   baseFontSizePx: number,
 ): Promise<string> {
-  // @ts-ignore Vite raw import
   const katexCss = (await import('katex/dist/katex.min.css?raw')).default
   const renderFontSize = baseFontSizePx * scale
 
