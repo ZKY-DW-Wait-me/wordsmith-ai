@@ -5,6 +5,7 @@ export interface GuardReport {
   enforcedBodyStyle: boolean
   tablesProcessed: number
   mathMlNodesRemoved: number
+  removedForbiddenNodes: number
 }
 
 export interface GuardResult {

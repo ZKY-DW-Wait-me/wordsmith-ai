@@ -76,4 +76,32 @@ describe('protocol-guard', () => {
     })
     expect(mult.html).toMatch(/line-height:\s*1\.75(?!pt)/)
   })
+
+  it('strips forbidden tags and executable content (protocol rule 6 / XSS)', () => {
+    const input = `<body>
+      <p>safe</p>
+      <script>alert(1)</script>
+      <iframe src="evil"></iframe>
+      <object data="x"></object><embed src="x">
+      <img src="x" onerror="alert(2)">
+      <a href="javascript:alert(3)">l</a>
+      <a href="JaVaScRiPt:alert(4)">l2</a>
+    </body>`
+    const out = guardHtml(input, { fontFamily: 'SimSun', fontSizePt: 12 })
+    expect(out.html).not.toContain('<script')
+    expect(out.html).not.toContain('<iframe')
+    expect(out.html).not.toContain('<object')
+    expect(out.html).not.toContain('<embed')
+    expect(out.html).not.toContain('onerror')
+    expect(out.html.toLowerCase()).not.toContain('javascript:')
+    expect(out.html).toContain('safe') // 正常内容保留
+    expect(out.report.removedForbiddenNodes).toBeGreaterThanOrEqual(6)
+  })
+
+  it('neutralizes whitespace-obfuscated javascript: urls', () => {
+    const input = `<body><a href="java\tscript:alert(1)">x</a><a href="ja\nvascript:alert(2)">y</a></body>`
+    const out = guardHtml(input, { fontFamily: 'SimSun', fontSizePt: 12 })
+    expect(out.html.toLowerCase()).not.toContain('script:alert')
+    expect(out.report.removedForbiddenNodes).toBeGreaterThanOrEqual(2)
+  })
 })

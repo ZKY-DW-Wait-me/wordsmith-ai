@@ -3,15 +3,16 @@ import type { GuardReport, GuardTypography } from '../types/guard'
 /**
  * HTML 排版协议守卫
  * 负责将普通的 HTML 清洗、转换为符合 Word 粘贴标准的 HTML
- * 
+ *
  * 主要功能：
+ * 0. 安全清洗：移除脚本/事件处理器等可执行内容（协议规则 6，兼防 XSS）
  * 1. 单位统一转换为 pt
  * 2. 移除 style 标签和外链样式
  * 3. 确保表格边框、宽度、居中对齐
  * 4. 强制应用全局排版设置 (字体、字号、行距、字间距、字色等)
  * 5. 清洗 MathML 等不兼容标签
  * 6. 段落级排版（首行缩进、段前/段后、对齐）在不覆盖已有内联样式的前提下应用
- * 
+ *
  * @param html 原始 HTML 字符串
  * @param defaults 全局排版默认值
  * @returns 清洗后的 HTML（包含完整 <body>）和处理报告
@@ -29,7 +30,35 @@ export function guardHtml(
     removedStylesheetLinks: 0,
     mathMlNodesRemoved: 0,
     enforcedBodyStyle: false,
+    removedForbiddenNodes: 0,
   }
+
+  // 0. 安全清洗：移除协议禁止的标签与可执行内容（协议规则 6）。
+  //    输出会经 dangerouslySetInnerHTML 渲染进应用 DOM，故必须防 XSS：
+  //    - 危险标签整体删除
+  //    - 内联事件处理器（onclick / onerror 等）删除
+  //    - href/src 里的 javascript:/vbscript:/data:text/html 协议置空
+  doc.querySelectorAll('script, iframe, object, embed, noscript, template, form, meta, base').forEach((el) => {
+    el.remove()
+    report.removedForbiddenNodes++
+  })
+  doc.querySelectorAll('*').forEach((el) => {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase()
+      if (name.startsWith('on')) {
+        // 删除所有 on* 内联事件属性
+        el.removeAttribute(attr.name)
+        report.removedForbiddenNodes++
+      } else if (name === 'href' || name === 'src' || name === 'xlink:href') {
+        // 去掉空白/控制字符（防 "java\tscript:" 之类绕过）后判断协议
+        const v = attr.value.replace(/\s+/g, '').toLowerCase()
+        if (v.startsWith('javascript:') || v.startsWith('vbscript:') || v.startsWith('data:text/html')) {
+          el.removeAttribute(attr.name)
+          report.removedForbiddenNodes++
+        }
+      }
+    }
+  })
 
   // 1. Remove <style> and <link rel="stylesheet">
   doc.querySelectorAll('style').forEach((el) => {
@@ -63,7 +92,7 @@ export function guardHtml(
     if (!table.style.borderCollapse) table.style.borderCollapse = 'collapse'
     // Default border if missing（协议要求 pt 单位）
     if (!table.style.border) table.style.border = '1pt solid #000'
-    
+
     // Process cells
     table.querySelectorAll('td, th').forEach((cell) => {
       const el = cell as HTMLElement
